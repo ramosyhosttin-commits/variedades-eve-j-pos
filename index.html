@@ -1004,4 +1004,202 @@
                 if(itemExistente.qty < prod.stock) {
                     itemExistente.qty++;
                 } else {
-                    alert("No hay más stock disponible para
+                    alert("No hay más stock disponible para este producto.");
+                }
+            } else {
+                carrito.push({
+                    code: prod.code,
+                    name: prod.name,
+                    price: precioActivo,
+                    qty: 1,
+                    iva: prod.iva
+                });
+            }
+            renderCarrito();
+            actualizarTotales();
+        }
+
+        function renderCarrito() {
+            const container = document.getElementById('cartItems');
+            if(carrito.length === 0) {
+                container.innerHTML = `<p style="color: var(--text-muted); font-size: 0.85rem;">Selecciona o busca productos...</p>`;
+                return;
+            }
+
+            container.innerHTML = "";
+            carrito.forEach((item, index) => {
+                container.innerHTML += `
+                    <div class="cart-item">
+                        <div>
+                            <strong>${item.name}</strong><br>
+                            <span style="color: var(--primary-purple);">$${item.price.toFixed(2)} c/u</span>
+                        </div>
+                        <div class="cart-controls">
+                            <button class="qty-btn" onclick="cambiarQty(${index}, -1)">-</button>
+                            <input type="text" class="qty-input" value="${item.qty}" readonly>
+                            <button class="qty-btn" onclick="cambiarQty(${index}, 1)">+</button>
+                            <button class="btn-remove-item" onclick="eliminarItem(${index})">✕</button>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function cambiarQty(index, delta) {
+            const item = carrito[index];
+            const prod = productos.find(p => p.code === item.code);
+            const nuevaQty = item.qty + delta;
+
+            if(nuevaQty > 0 && nuevaQty <= prod.stock) {
+                item.qty = nuevaQty;
+            } else if(nuevaQty > prod.stock) {
+                alert("Stock máximo alcanzado.");
+            }
+            renderCarrito();
+            actualizarTotales();
+        }
+
+        function eliminarItem(index) {
+            carrito.splice(index, 1);
+            renderCarrito();
+            actualizarTotales();
+        }
+
+        function actualizarTotales() {
+            let subtotal = 0;
+            let montoIva = 0;
+
+            carrito.forEach(item => {
+                let totalItem = item.price * item.qty;
+                if(item.iva) {
+                    let base = totalItem / 1.16;
+                    let ivaItem = totalItem - base;
+                    subtotal += base;
+                    montoIva += ivaItem;
+                } else {
+                    subtotal += totalItem;
+                }
+            });
+
+            let totalUSD = subtotal + montoIva;
+            let totalBsVal = totalUSD * config.tasa;
+
+            const tipoDoc = document.getElementById('tipoDocumentoSelect').value;
+            if(tipoDoc === 'FACTURA') {
+                document.getElementById('rowIva').style.display = 'flex';
+                document.getElementById('subTotal').innerText = `$${subtotal.toFixed(2)}`;
+                document.getElementById('montoIvaDisplay').innerText = `$${montoIva.toFixed(2)}`;
+            } else {
+                document.getElementById('rowIva').style.display = 'none';
+                document.getElementById('subTotal').innerText = `$${totalUSD.toFixed(2)}`;
+            }
+
+            document.getElementById('lblTasa').innerText = config.tasa.toFixed(2);
+            document.getElementById('totalBs').innerText = `Bs ${totalBsVal.toFixed(2)}`;
+            document.getElementById('finalTotal').innerText = `$${totalUSD.toFixed(2)}`;
+
+            toggleCasheaField();
+        }
+
+        document.getElementById('tipoDocumentoSelect').addEventListener('change', actualizarTotales);
+
+        function toggleCasheaField() {
+            const metodo = document.getElementById('paymentMethod').value;
+            const casheaContainer = document.getElementById('casheaContainer');
+            if(metodo === 'Cashea') {
+                casheaContainer.style.display = 'block';
+                calcularInicialCashea();
+            } else {
+                casheaContainer.style.display = 'none';
+            }
+        }
+
+        function calcularInicialCashea() {
+            const porc = parseFloat(document.getElementById('casheaLevel').value);
+            let totalUSD = 0;
+            carrito.forEach(i => totalUSD += i.price * i.qty);
+            let inicialUSD = totalUSD * porc;
+            let inicialBs = inicialUSD * config.tasa;
+            document.getElementById('casheaInicialMonto').innerText = `$${inicialUSD.toFixed(2)} (Bs ${inicialBs.toFixed(2)})`;
+        }
+
+        function procesarVenta() {
+            if(carrito.length === 0) {
+                alert("El carrito está vacío.");
+                return;
+            }
+
+            let totalUSD = 0;
+            let exento = 0;
+            let baseImp = 0;
+            let ivaVal = 0;
+
+            carrito.forEach(item => {
+                let t = item.price * item.qty;
+                totalUSD += t;
+                const prod = productos.find(p => p.code === item.code);
+                prod.stock -= item.qty;
+
+                if(item.iva) {
+                    let b = t / 1.16;
+                    baseImp += b;
+                    ivaVal += (t - b);
+                } else {
+                    exento += t;
+                }
+            });
+
+            const tipoDoc = document.getElementById('tipoDocumentoSelect').value;
+            let numDoc = tipoDoc === 'FACTURA' ? `F-${String(correlativoFactura++).padStart(8, '0')}` : `N-${String(correlativoNota++).padStart(8, '0')}`;
+            let numControl = tipoDoc === 'FACTURA' ? `00-${String(correlativoFactura).padStart(8, '0')}` : "";
+            let metodoPago = document.getElementById('paymentMethod').value;
+            let fechaHora = new Date().toLocaleString();
+
+            let ventaRecord = {
+                fecha: fechaHora,
+                tipo: tipoDoc,
+                numero: numDoc,
+                control: numControl,
+                metodo: metodoPago,
+                total: totalUSD,
+                exento: exento,
+                base: baseImp,
+                iva: ivaVal,
+                items: [...carrito]
+            };
+
+            ventasTurno.push(ventaRecord);
+            libroVentas.push(ventaRecord);
+
+            mostrarComprobante(ventaRecord);
+
+            carrito = [];
+            renderCarrito();
+            actualizarTotales();
+            renderProductos();
+            renderInventario();
+            renderCajaData();
+            renderLibroVentas();
+        }
+
+        function mostrarComprobante(v) {
+            document.getElementById('printStoreName').innerText = config.name.toUpperCase();
+            document.getElementById('printStoreRif').innerText = `RIF: ${config.rif}`;
+            document.getElementById('printStoreAddress').innerText = config.address;
+            document.getElementById('printTitleType').innerText = v.tipo === 'FACTURA' ? 'FACTURA FISCAL (SENIAT)' : 'NOTA DE ENTREGA';
+            document.getElementById('invNum').innerText = `Nro: ${v.numero}`;
+            
+            const ctrlEl = document.getElementById('invControlNum');
+            if(v.tipo === 'FACTURA') {
+                ctrlEl.style.display = 'block';
+                ctrlEl.innerText = `Control: ${v.control}`;
+                document.getElementById('invFiscalFooter').style.display = 'none';
+            } else {
+                ctrlEl.style.display = 'none';
+                document.getElementById('invFiscalFooter').style.display = 'block';
+            }
+
+            document.getElementById('invPaymentMethod').innerText = `Método: ${v.metodo}`;
+
+            let bodyHTML = `<p>----------------------------------------</p><table><tr><th>Cant</th><th>Desc</th><th>P.Unit</th><th>Total</th></tr>`;
+            v.items.forEach(i
