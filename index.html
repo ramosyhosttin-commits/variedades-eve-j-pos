@@ -541,7 +541,7 @@
             font-family: 'Plus Jakarta Sans', sans-serif;
         }
 
-        /* ESTILOS PARA MODO CELULAR / MOVIL */
+        /* MODO CELULAR / MOVIL */
         body.mobile-mode .sidebar {
             position: fixed;
             left: -260px;
@@ -601,14 +601,12 @@
     </div>
 
     <div class="main-container">
-        <!-- Barra superior para modo celular -->
         <div class="topbar-mobile">
             <button onclick="toggleMenuMobile()" style="background:none; border:none; color:var(--text-main); font-size:1.2rem; cursor:pointer;">☰ Menú</button>
             <span style="font-weight:700; color:var(--primary-purple); font-size:0.95rem;">Variedades EVE J</span>
             <button onclick="toggleModoCelular()" id="btnModoText" style="background:var(--primary-purple); color:#fff; border:none; padding:5px 10px; border-radius:6px; font-size:0.75rem; font-weight:600; cursor:pointer;">🖥️ Modo PC</button>
         </div>
 
-        <!-- Botón flotante para activar modo celular en PC si lo deseas -->
         <div style="position: absolute; top: 12px; right: 20px; z-index: 1100;">
             <button onclick="toggleModoCelular()" id="btnModoFlotante" style="background: var(--card-dark); border: 1px solid var(--primary-purple); color: var(--primary-purple); padding: 6px 12px; border-radius: 8px; font-size: 0.8rem; font-weight: 600; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.3);">📱 Cambiar a Modo Celular</button>
         </div>
@@ -912,7 +910,7 @@
     </div>
 
     <script>
-        let config = {
+        let config = JSON.parse(localStorage.getItem('eve_config')) || {
             name: "Variedades EVE J Sant Louis",
             rif: "J-12345678-9",
             address: "Barquisimeto, Lara",
@@ -920,21 +918,33 @@
             theme: "dark"
         };
 
-        let productos = [
+        let productos = JSON.parse(localStorage.getItem('eve_productos')) || [
             { code: "001", name: "Blusa Casual", price: 12.00, mayorPrice: 9.50, stock: 25, iva: 1 },
             { code: "002", name: "Jeans Damas", price: 22.00, mayorPrice: 18.00, stock: 15, iva: 1 },
             { code: "003", name: "Vestido Elegante", price: 30.00, mayorPrice: 25.00, stock: 10, iva: 1 },
             { code: "004", name: "Cartera Ejecutiva", price: 18.00, mayorPrice: 14.00, stock: 8, iva: 1 }
         ];
 
+        let ventasTurno = JSON.parse(localStorage.getItem('eve_ventasTurno')) || [];
+        let historialCierres = JSON.parse(localStorage.getItem('eve_historialCierres')) || [];
+        let libroVentas = JSON.parse(localStorage.getItem('eve_libroVentas')) || [];
+        let turnoActualNum = parseInt(localStorage.getItem('eve_turnoNum')) || 1;
+        let correlativoNota = parseInt(localStorage.getItem('eve_corrNota')) || 125;
+        let correlativoFactura = parseInt(localStorage.getItem('eve_corrFactura')) || 1;
+
         let carrito = [];
         let modoPrecio = "detal";
-        let ventasTurno = [];
-        let historialCierres = [];
-        let libroVentas = [];
-        let turnoActualNum = 1;
-        let correlativoNota = 125;
-        let correlativoFactura = 1;
+
+        function guardarDatos() {
+            localStorage.setItem('eve_config', JSON.stringify(config));
+            localStorage.setItem('eve_productos', JSON.stringify(productos));
+            localStorage.setItem('eve_ventasTurno', JSON.stringify(ventasTurno));
+            localStorage.setItem('eve_historialCierres', JSON.stringify(historialCierres));
+            localStorage.setItem('eve_libroVentas', JSON.stringify(libroVentas));
+            localStorage.setItem('eve_turnoNum', turnoActualNum);
+            localStorage.setItem('eve_corrNota', correlativoNota);
+            localStorage.setItem('eve_corrFactura', correlativoFactura);
+        }
 
         function toggleModoCelular() {
             document.body.classList.toggle('mobile-mode');
@@ -958,6 +968,7 @@
                 
                 if(data && data.promedio) {
                     config.tasa = parseFloat(data.promedio);
+                    guardarDatos();
                     document.getElementById('lblTasa').innerText = config.tasa.toFixed(2);
                     if(document.getElementById('storeTasa')) {
                         document.getElementById('storeTasa').value = config.tasa.toFixed(2);
@@ -967,7 +978,7 @@
                     if(alertaManual) alert(`Tasa BCV actualizada exitosamente: Bs ${config.tasa.toFixed(2)}`);
                 }
             } catch (error) {
-                console.warn("No se pudo obtener la tasa en tiempo real, usando la tasa por defecto:", error);
+                console.warn("No se pudo obtener la tasa en tiempo real, usando la tasa guardada:", error);
                 if(estadoEl) estadoEl.innerText = "No se pudo conectar a la API del BCV, usando tasa guardada.";
                 document.getElementById('lblTasa').innerText = config.tasa.toFixed(2);
             }
@@ -1234,6 +1245,7 @@
 
             ventasTurno.push(ventaRecord);
             libroVentas.push(ventaRecord);
+            guardarDatos();
 
             mostrarComprobante(ventaRecord);
 
@@ -1363,6 +1375,7 @@
 
             turnoActualNum++;
             ventasTurno = [];
+            guardarDatos();
             renderCajaData();
             alert("Turno cerrado exitosamente. Se ha iniciado un nuevo turno de caja.");
         }
@@ -1420,6 +1433,8 @@
             }
 
             productos.push({ code, name, price, mayorPrice, stock, iva });
+            guardarDatos();
+
             document.getElementById('newProdCode').value = "";
             document.getElementById('newProdName').value = "";
             document.getElementById('newProdPrice').value = "";
@@ -1428,7 +1443,7 @@
 
             renderInventario();
             renderProductos();
-            alert("Producto agregado con éxito.");
+            alert("Producto agregado y guardado con éxito.");
         }
 
         function renderInventario() {
@@ -1462,11 +1477,13 @@
             } else {
                 productos[index][campo] = val;
             }
+            guardarDatos();
             renderProductos();
         }
 
         function eliminarProducto(index) {
             productos.splice(index, 1);
+            guardarDatos();
             renderInventario();
             renderProductos();
         }
@@ -1486,6 +1503,7 @@
             config.tasa = parseFloat(document.getElementById('storeTasa').value) || config.tasa;
             config.theme = document.getElementById('storeThemeSelect').value;
 
+            guardarDatos();
             aplicarConfigUI();
             actualizarTotales();
             alert("Configuración guardada con éxito.");
