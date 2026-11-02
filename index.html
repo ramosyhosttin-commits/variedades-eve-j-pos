@@ -3,11 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Variedades EVE J Sant Louis - POS Cloud</title>
+    <title>Variedades EVE J Sant Louis - POS Local</title>
     <link rel="icon" type="image/png" href="logo.png">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-    <!-- Librería oficial de Supabase -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
 
@@ -885,7 +883,7 @@
             <p><strong>Método de Pago:</strong> <span id="invMetodo">---</span></p>
             <div class="invoice-footer">
                 <p>¡Gracias por su compra!</p>
-                <p>Sistema POS Cloud - Sincronizado</p>
+                <p>Sistema POS Local</p>
             </div>
             <div class="modal-buttons">
                 <button class="btn-print" onclick="window.print()">🖨️ Imprimir</button>
@@ -895,13 +893,6 @@
     </div>
 
     <script>
-        // ==========================================
-        // CONFIGURACIÓN DE SUPABASE INTEGRADA
-        // ==========================================
-        const SUPABASE_URL = 'https://lnearffuodrgvdoxvvmt.supabase.co';[cite: 5]
-        const SUPABASE_KEY = 'sb_publishable_K5SEfgf3IrKycJoZqayWDA_HlNVHCmq';[cite: 9]
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
         let currentBusiness = 'negocio1';
         let products = [];
         let cart = [];
@@ -912,7 +903,7 @@
         let modoPrecio = 'detal';
         let modoMovilActivo = false;
 
-        async function verificarLogin() {
+        function verificarLogin() {
             const user = document.getElementById('loginUser').value.trim();
             const pass = document.getElementById('loginPass').value.trim();
             currentBusiness = document.getElementById('loginBusiness').value;
@@ -920,8 +911,7 @@
             if (user === 'lapatrona' && pass === 'saint21') {
                 document.getElementById('loginOverlay').style.display = 'none';
                 document.getElementById('lblNegocioActivo').innerText = currentBusiness === 'negocio1' ? 'Negocio 1' : 'Negocio 2';
-                initRealtime();
-                await loadDataFromSupabase();
+                cargarDatosLocales();
             } else {
                 document.getElementById('loginError').style.display = 'block';
             }
@@ -931,48 +921,24 @@
             document.getElementById('loginOverlay').style.display = 'flex';
         }
 
-        // CARGAR DATOS DESDE SUPABASE
-        async function loadDataFromSupabase() {
-            try {
-                const { data: prodData, error: prodError } = await supabase
-                    .from('productos')
-                    .select('*')
-                    .eq('business_id', currentBusiness);
+        function cargarDatosLocales() {
+            const prodGuardados = localStorage.getItem('pos_products_' + currentBusiness);
+            const ventasGuardadas = localStorage.getItem('pos_ventas_' + currentBusiness);
 
-                if (!prodError) {
-                    products = prodData || [];
-                }
+            products = prodGuardados ? JSON.parse(prodGuardados) : [
+                { id: '1', code: '001', name: 'Producto Ejemplo', price: 10.00, mayor_price: 8.00, stock: 50, iva: 1 }
+            ];
+            ventas = ventasGuardadas ? JSON.parse(ventasGuardadas) : [];
 
-                const { data: salesData, error: salesError } = await supabase
-                    .from('ventas')
-                    .select('*')
-                    .eq('business_id', currentBusiness)
-                    .order('fecha', { ascending: false });
-
-                if (!salesError) {
-                    ventas = salesData || [];
-                }
-
-                renderProducts();
-                renderInventoryTable();
-                renderCajaData();
-                renderLibroVentas();
-            } catch (e) {
-                console.error("Error cargando datos de Supabase", e);
-            }
+            renderProducts();
+            renderInventoryTable();
+            renderCajaData();
+            renderLibroVentas();
         }
 
-        // SINCRONIZACIÓN EN TIEMPO REAL CON SUPABASE
-        function initRealtime() {
-            supabase
-                .channel('schema-db-changes')
-                .on('postgres_changes', { event: '*', schema: 'public', table: 'productos' }, () => {
-                    loadDataFromSupabase();
-                })
-                .on('postgres_changes', { event: '*', schema: 'public', table: 'ventas' }, () => {
-                    loadDataFromSupabase();
-                })
-                .subscribe();
+        function guardarDatosLocales() {
+            localStorage.setItem('pos_products_' + currentBusiness, JSON.stringify(products));
+            localStorage.setItem('pos_ventas_' + currentBusiness, JSON.stringify(ventas));
         }
 
         function cambiarVista(vista) {
@@ -1174,8 +1140,7 @@
             document.getElementById('casheaInicialMonto').innerText = `$${montoInicialUSD.toFixed(2)} (Bs ${montoInicialBs.toFixed(2)})`;
         }
 
-        // PROCESAR VENTA Y GUARDAR EN SUPABASE
-        async function procesarVenta() {
+        function procesarVenta() {
             if (cart.length === 0) {
                 alert('El carrito está vacío');
                 return;
@@ -1195,7 +1160,6 @@
             const numControl = '00-' + Math.floor(100000 + Math.random() * 900000);
 
             const nuevaVenta = {
-                business_id: currentBusiness,
                 fecha: new Date().toISOString(),
                 tipo: tipoDoc,
                 numero: numDoc,
@@ -1208,26 +1172,23 @@
                 items: JSON.parse(JSON.stringify(cart))
             };
 
-            // Insertar en Supabase
-            const { error } = await supabase.from('ventas').insert([nuevaVenta]);
-            if (error) {
-                alert('Error al registrar venta en la nube');
-                return;
-            }
+            ventas.unshift(nuevaVenta);
 
-            // Descontar Stock en Supabase
-            for (let item of cart) {
+            cart.forEach(item => {
                 const prodReal = products.find(p => p.id === item.id);
                 if (prodReal) {
-                    const nuevoStock = prodReal.stock - item.qty;
-                    await supabase.from('productos').update({ stock: nuevoStock }).eq('id', item.id);
+                    prodReal.stock -= item.qty;
                 }
-            }
+            });
 
+            guardarDatosLocales();
             mostrarFacturaModal(nuevaVenta);
             cart = [];
             renderCart();
-            await loadDataFromSupabase();
+            renderProducts();
+            renderInventoryTable();
+            renderCajaData();
+            renderLibroVentas();
         }
 
         function mostrarFacturaModal(v) {
@@ -1266,8 +1227,7 @@
             document.getElementById('invoiceModal').style.display = 'none';
         }
 
-        // GESTIÓN DE INVENTARIO
-        async function agregarProducto() {
+        function agregarProducto() {
             const code = document.getElementById('newProdCode').value.trim();
             const name = document.getElementById('newProdName').value.trim();
             const price = parseFloat(document.getElementById('newProdPrice').value);
@@ -1281,7 +1241,7 @@
             }
 
             const nuevoProd = {
-                business_id: currentBusiness,
+                id: Date.now().toString(),
                 code,
                 name,
                 price,
@@ -1290,11 +1250,8 @@
                 iva
             };
 
-            const { error } = await supabase.from('productos').insert([nuevoProd]);
-            if (error) {
-                alert('Error al guardar producto');
-                return;
-            }
+            products.push(nuevoProd);
+            guardarDatosLocales();
 
             document.getElementById('newProdCode').value = '';
             document.getElementById('newProdName').value = '';
@@ -1302,7 +1259,8 @@
             document.getElementById('newProdMayorPrice').value = '';
             document.getElementById('newProdStock').value = '';
 
-            await loadDataFromSupabase();
+            renderProducts();
+            renderInventoryTable();
             alert('¡Producto agregado exitosamente!');
         }
 
@@ -1325,20 +1283,24 @@
             });
         }
 
-        async function actualizarCampoProd(id, campo, valor) {
-            const valNum = parseFloat(valor);
-            await supabase.from('productos').update({ [campo]: valNum }).eq('id', id);
-            await loadDataFromSupabase();
-        }
-
-        async function eliminarProducto(id) {
-            if (confirm('¿Seguro que deseas eliminar este producto?')) {
-                await supabase.from('productos').delete().eq('id', id);
-                await loadDataFromSupabase();
+        function actualizarCampoProd(id, campo, valor) {
+            const p = products.find(x => x.id === id);
+            if (p) {
+                p[campo] = campo === 'price' || campo === 'mayor_price' ? parseFloat(valor) : parseInt(valor);
+                guardarDatosLocales();
+                renderProducts();
             }
         }
 
-        // CIERRE DE CAJA Y REPORTES
+        function eliminarProducto(id) {
+            if (confirm('¿Seguro que deseas eliminar este producto?')) {
+                products = products.filter(x => x.id !== id);
+                guardarDatosLocales();
+                renderProducts();
+                renderInventoryTable();
+            }
+        }
+
         function renderCajaData() {
             document.getElementById('lblTurnoNum').innerText = `Turno Activo #${turnoActual}`;
             const filtroMetodo = document.getElementById('filterPaymentMethod').value;
@@ -1438,7 +1400,6 @@
             window.print();
         }
 
-        // LIBRO DE VENTAS
         function renderLibroVentas() {
             const tbody = document.getElementById('libroVentasBody');
             tbody.innerHTML = '';
@@ -1465,7 +1426,6 @@
             if (v) mostrarFacturaModal(v);
         }
 
-        // CONFIGURACIÓN
         function actualizarTasaConfig() {
             tasaBCV = parseFloat(document.getElementById('confTasa').value) || 36.50;
             actualizarTotales();
