@@ -946,6 +946,24 @@
             localStorage.setItem('eve_corrFactura', correlativoFactura);
         }
 
+        // Sincronización automática si se abre en varias pestañas o dispositivos sincronizados
+        window.addEventListener('storage', (e) => {
+            if(e.key && e.key.startsWith('eve_')) {
+                config = JSON.parse(localStorage.getItem('eve_config')) || config;
+                productos = JSON.parse(localStorage.getItem('eve_productos')) || productos;
+                ventasTurno = JSON.parse(localStorage.getItem('eve_ventasTurno')) || ventasTurno;
+                historialCierres = JSON.parse(localStorage.getItem('eve_historialCierres')) || historialCierres;
+                libroVentas = JSON.parse(localStorage.getItem('eve_libroVentas')) || libroVentas;
+                
+                renderProductos();
+                renderInventario();
+                actualizarTotales();
+                renderCajaData();
+                renderLibroVentas();
+                aplicarConfigUI();
+            }
+        });
+
         function toggleModoCelular() {
             document.body.classList.toggle('mobile-mode');
             const isMobile = document.body.classList.contains('mobile-mode');
