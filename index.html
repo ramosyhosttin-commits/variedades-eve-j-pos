@@ -101,6 +101,7 @@
             flex-direction: column;
             padding: 20px;
             overflow-y: auto;
+            transition: transform 0.3s ease;
         }
 
         .sidebar h2 {
@@ -130,8 +131,19 @@
         .main-container {
             flex: 1;
             display: flex;
+            flex-direction: column;
             overflow: hidden;
             position: relative;
+        }
+
+        .topbar-mobile {
+            display: none;
+            background-color: var(--card-dark);
+            border-bottom: 1px solid var(--border-dark);
+            padding: 10px 15px;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 100;
         }
 
         .section-view {
@@ -529,6 +541,35 @@
             font-family: 'Plus Jakarta Sans', sans-serif;
         }
 
+        /* ESTILOS PARA MODO CELULAR / MOVIL */
+        body.mobile-mode .sidebar {
+            position: fixed;
+            left: -260px;
+            height: 100%;
+            z-index: 1500;
+            box-shadow: 5px 0 15px rgba(0,0,0,0.5);
+        }
+        body.mobile-mode .sidebar.show-sidebar {
+            left: 0;
+        }
+        body.mobile-mode .topbar-mobile {
+            display: flex;
+        }
+        body.mobile-mode #viewPos.active-view {
+            flex-direction: column !important;
+        }
+        body.mobile-mode .catalog-section {
+            padding-right: 0 !important;
+            border-right: none !important;
+            border-bottom: 1px solid var(--border-dark);
+            padding-bottom: 15px;
+            margin-bottom: 15px;
+            max-height: 350px;
+        }
+        body.mobile-mode .checkout-section {
+            margin-left: 0 !important;
+        }
+
         @media print {
             body * { visibility: hidden; }
             #invoiceModal, #invoiceModal * { visibility: visible; }
@@ -550,7 +591,7 @@
         </div>
     </div>
 
-    <div class="sidebar">
+    <div class="sidebar" id="appSidebar">
         <h2>🛍️ Variedades EVE J</h2>
         <button class="menu-btn active" id="mPos" onclick="cambiarVista('pos')">Punto de Venta</button>
         <button class="menu-btn" id="mInv" onclick="cambiarVista('inventario')">Gestión de Inventario</button>
@@ -560,6 +601,17 @@
     </div>
 
     <div class="main-container">
+        <!-- Barra superior para modo celular -->
+        <div class="topbar-mobile">
+            <button onclick="toggleMenuMobile()" style="background:none; border:none; color:var(--text-main); font-size:1.2rem; cursor:pointer;">☰ Menú</button>
+            <span style="font-weight:700; color:var(--primary-purple); font-size:0.95rem;">Variedades EVE J</span>
+            <button onclick="toggleModoCelular()" id="btnModoText" style="background:var(--primary-purple); color:#fff; border:none; padding:5px 10px; border-radius:6px; font-size:0.75rem; font-weight:600; cursor:pointer;">🖥️ Modo PC</button>
+        </div>
+
+        <!-- Botón flotante para activar modo celular en PC si lo deseas -->
+        <div style="position: absolute; top: 12px; right: 20px; z-index: 1100;">
+            <button onclick="toggleModoCelular()" id="btnModoFlotante" style="background: var(--card-dark); border: 1px solid var(--primary-purple); color: var(--primary-purple); padding: 6px 12px; border-radius: 8px; font-size: 0.8rem; font-weight: 600; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.3);">📱 Cambiar a Modo Celular</button>
+        </div>
 
         <!-- 1. VISTA POS -->
         <div class="section-view active-view" id="viewPos">
@@ -884,6 +936,17 @@
         let correlativoNota = 125;
         let correlativoFactura = 1;
 
+        function toggleModoCelular() {
+            document.body.classList.toggle('mobile-mode');
+            const isMobile = document.body.classList.contains('mobile-mode');
+            document.getElementById('btnModoFlotante').innerText = isMobile ? "🖥️ Cambiar a Modo PC" : "📱 Cambiar a Modo Celular";
+            document.getElementById('btnModoText').innerText = isMobile ? "🖥️ Modo PC" : "📱 Modo Celular";
+        }
+
+        function toggleMenuMobile() {
+            document.getElementById('appSidebar').classList.toggle('show-sidebar');
+        }
+
         async function obtenerTasaBCV(alertaManual = false) {
             const estadoEl = document.getElementById('lblEstadoTasa');
             if(estadoEl) estadoEl.innerText = "Consultando tasa del BCV en línea...";
@@ -934,6 +997,7 @@
         function cambiarVista(vista) {
             document.querySelectorAll('.section-view').forEach(el => el.classList.remove('active-view'));
             document.querySelectorAll('.menu-btn').forEach(el => el.classList.remove('active'));
+            document.getElementById('appSidebar').classList.remove('show-sidebar');
 
             if(vista === 'pos') {
                 document.getElementById('viewPos').classList.add('active-view');
