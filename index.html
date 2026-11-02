@@ -913,7 +913,7 @@
         function verificarLogin() {
             const u = document.getElementById('loginUser').value;
             const p = document.getElementById('loginPass').value;
-            if(u === "LAPATRONA" && p === "SAINT21.") {
+            if(u === "lapatrona" && p === "saint21") {
                 document.getElementById('loginOverlay').style.display = 'none';
                 initApp();
             } else {
@@ -1202,4 +1202,238 @@
             document.getElementById('invPaymentMethod').innerText = `Método: ${v.metodo}`;
 
             let bodyHTML = `<p>----------------------------------------</p><table><tr><th>Cant</th><th>Desc</th><th>P.Unit</th><th>Total</th></tr>`;
-            v.items.forEach(i
+            v.items.forEach(i => {
+                bodyHTML += `<tr><td>${i.qty}</td><td>${i.name}</td><td>$${i.price.toFixed(2)}</td><td>$${(i.price*i.qty).toFixed(2)}</td></tr>`;
+            });
+            bodyHTML += `</table><p>----------------------------------------</p>`;
+            bodyHTML += `<p style="text-align:right;"><strong>Subtotal:</strong> $${(v.base + v.exento).toFixed(2)}</p>`;
+            if(v.tipo === 'FACTURA') {
+                bodyHTML += `<p style="text-align:right;"><strong>IVA 16%:</strong> $${v.iva.toFixed(2)}</p>`;
+            }
+            bodyHTML += `<p style="text-align:right; font-size: 1rem;"><strong>TOTAL USD:</strong> $${v.total.toFixed(2)}</p>`;
+            bodyHTML += `<p style="text-align:right;"><strong>Total Bs:</strong> Bs ${(v.total * config.tasa).toFixed(2)}</p>`;
+
+            document.getElementById('invBody').innerHTML = bodyHTML;
+            document.getElementById('invoiceModal').style.display = 'flex';
+        }
+
+        function cerrarModal() {
+            document.getElementById('invoiceModal').style.display = 'none';
+        }
+
+        function renderCajaData() {
+            let filtro = document.getElementById('filterPaymentMethod').value;
+            let mUSD = 0, mBs = 0, mPunto = 0, mPagoMovil = 0, mZelle = 0, mCashea = 0;
+            let montoTotal = 0;
+
+            ventasTurno.forEach(v => {
+                montoTotal += v.total;
+                if(v.metodo === 'Efectivo USD') mUSD += v.total;
+                if(v.metodo === 'Efectivo Bs') mBs += v.total;
+                if(v.metodo === 'Punto de Venta') mPunto += v.total;
+                if(v.metodo === 'Pago Móvil') mPagoMovil += v.total;
+                if(v.metodo === 'Zelle') mZelle += v.total;
+                if(v.metodo === 'Cashea') mCashea += v.total;
+            });
+
+            document.getElementById('lblTurnoNum').innerText = `Turno Activo #${turnoActualNum}`;
+            document.getElementById('mEfectivoUSD').innerText = `$${mUSD.toFixed(2)}`;
+            document.getElementById('mEfectivoBs').innerText = `$${mBs.toFixed(2)}`;
+            document.getElementById('mPunto').innerText = `$${mPunto.toFixed(2)}`;
+            document.getElementById('mPagoMovil').innerText = `$${mPagoMovil.toFixed(2)}`;
+            document.getElementById('mZelle').innerText = `$${mZelle.toFixed(2)}`;
+            document.getElementById('mCashea').innerText = `$${mCashea.toFixed(2)}`;
+
+            document.getElementById('cajaTotalVentas').innerText = ventasTurno.length;
+            document.getElementById('cajaMontoTotal').innerText = `$${montoTotal.toFixed(2)}`;
+
+            const tbody = document.getElementById('ventasDiaBody');
+            tbody.innerHTML = "";
+
+            const filtradas = filtro === 'TODOS' ? ventasTurno : ventasTurno.filter(v => v.metodo === filtro);
+
+            filtradas.forEach(v => {
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${v.fecha}</td>
+                        <td>${v.numero}</td>
+                        <td>${v.metodo}</td>
+                        <td>$${v.total.toFixed(2)}</td>
+                    </tr>
+                `;
+            });
+
+            renderHistorialCierres();
+        }
+
+        function renderHistorialCierres() {
+            const tbody = document.getElementById('historialCierresBody');
+            tbody.innerHTML = "";
+            historialCierres.forEach(c => {
+                tbody.innerHTML += `
+                    <tr>
+                        <td>Turno #${c.turno}</td>
+                        <td>${c.fecha}</td>
+                        <td>${c.transacciones}</td>
+                        <td>$${c.total.toFixed(2)}</td>
+                    </tr>
+                `;
+            });
+        }
+
+        function realizarCierreCaja() {
+            if(ventasTurno.length === 0) {
+                alert("No hay ventas registradas en este turno para cerrar.");
+                return;
+            }
+
+            let totalTurno = 0;
+            ventasTurno.forEach(v => totalTurno += v.total);
+
+            historialCierres.push({
+                turno: turnoActualNum,
+                fecha: new Date().toLocaleString(),
+                transacciones: ventasTurno.length,
+                total: totalTurno
+            });
+
+            turnoActualNum++;
+            ventasTurno = [];
+            renderCajaData();
+            alert("Turno cerrado exitosamente. Se ha iniciado un nuevo turno de caja.");
+        }
+
+        function descargarCierreImagen() {
+            const box = document.getElementById('cajaReporteBox');
+            html2canvas(box, { backgroundColor: '#1a1a1a' }).then(canvas => {
+                let link = document.createElement('a');
+                link.download = `Cierre_Turno_${turnoActualNum}.png`;
+                link.href = canvas.toDataURL();
+                link.click();
+            });
+        }
+
+        function imprimirReporteCierre() {
+            window.print();
+        }
+
+        function renderLibroVentas() {
+            const tbody = document.getElementById('libroVentasBody');
+            tbody.innerHTML = "";
+            libroVentas.forEach(v => {
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${v.fecha}</td>
+                        <td>${v.numero}</td>
+                        <td>${v.control || 'N/A'}</td>
+                        <td>${v.tipo}</td>
+                        <td>$${v.total.toFixed(2)}</td>
+                        <td>$${v.exento.toFixed(2)}</td>
+                        <td>$${v.base.toFixed(2)}</td>
+                        <td>$${v.iva.toFixed(2)}</td>
+                        <td><button class="btn-delete" style="padding:4px 8px; font-size:0.75rem;" onclick="mostrarComprobanteVentaLibro('${v.numero}')">Ver</button></td>
+                    </tr>
+                `;
+            });
+        }
+
+        function mostrarComprobanteVentaLibro(num) {
+            const v = libroVentas.find(item => item.numero === num);
+            if(v) mostrarComprobante(v);
+        }
+
+        function agregarProducto() {
+            const code = document.getElementById('newProdCode').value;
+            const name = document.getElementById('newProdName').value;
+            const price = parseFloat(document.getElementById('newProdPrice').value);
+            const mayorPrice = parseFloat(document.getElementById('newProdMayorPrice').value);
+            const stock = parseInt(document.getElementById('newProdStock').value);
+            const iva = parseInt(document.getElementById('newProdIva').value);
+
+            if(!code || !name || isNaN(price) || isNaN(mayorPrice) || isNaN(stock)) {
+                alert("Por favor complete todos los campos correctamente.");
+                return;
+            }
+
+            productos.push({ code, name, price, mayorPrice, stock, iva });
+            document.getElementById('newProdCode').value = "";
+            document.getElementById('newProdName').value = "";
+            document.getElementById('newProdPrice').value = "";
+            document.getElementById('newProdMayorPrice').value = "";
+            document.getElementById('newProdStock').value = "";
+
+            renderInventario();
+            renderProductos();
+            alert("Producto agregado con éxito.");
+        }
+
+        function renderInventario() {
+            const tbody = document.getElementById('inventoryTableBody');
+            tbody.innerHTML = "";
+            productos.forEach((p, index) => {
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${p.code}</td>
+                        <td><input type="text" class="table-input" value="${p.name}" onchange="actualizarProd(${index}, 'name', this.value)"></td>
+                        <td><input type="number" class="table-input" value="${p.price}" step="0.01" onchange="actualizarProd(${index}, 'price', this.value)"></td>
+                        <td><input type="number" class="table-input" value="${p.mayorPrice}" step="0.01" onchange="actualizarProd(${index}, 'mayorPrice', this.value)"></td>
+                        <td><input type="number" class="table-input" value="${p.stock}" onchange="actualizarProd(${index}, 'stock', this.value)"></td>
+                        <td>
+                            <select class="table-input" onchange="actualizarProd(${index}, 'iva', this.value)">
+                                <option value="1" ${p.iva == 1 ? 'selected' : ''}>IVA 16%</option>
+                                <option value="0" ${p.iva == 0 ? 'selected' : ''}>Exento</option>
+                            </select>
+                        </td>
+                        <td><button class="btn-delete" onclick="eliminarProducto(${index})">Eliminar</button></td>
+                    </tr>
+                `;
+            });
+        }
+
+        function actualizarProd(index, campo, val) {
+            if(campo === 'price' || campo === 'mayorPrice' || campo === 'stock') {
+                productos[index][campo] = parseFloat(val);
+            } else if(campo === 'iva') {
+                productos[index][campo] = parseInt(val);
+            } else {
+                productos[index][campo] = val;
+            }
+            renderProductos();
+        }
+
+        function eliminarProducto(index) {
+            productos.splice(index, 1);
+            renderInventario();
+            renderProductos();
+        }
+
+        function cargarConfigUI() {
+            document.getElementById('storeName').value = config.name;
+            document.getElementById('storeRif').value = config.rif;
+            document.getElementById('storeAddress').value = config.address;
+            document.getElementById('storeTasa').value = config.tasa.toFixed(2);
+            document.getElementById('storeThemeSelect').value = config.theme;
+        }
+
+        function guardarConfig() {
+            config.name = document.getElementById('storeName').value;
+            config.rif = document.getElementById('storeRif').value;
+            config.address = document.getElementById('storeAddress').value;
+            config.tasa = parseFloat(document.getElementById('storeTasa').value) || config.tasa;
+            config.theme = document.getElementById('storeThemeSelect').value;
+
+            aplicarConfigUI();
+            actualizarTotales();
+            alert("Configuración guardada con éxito.");
+        }
+
+        function aplicarConfigUI() {
+            if(config.theme === 'light') {
+                document.body.classList.add('light-theme');
+            } else {
+                document.body.classList.remove('light-theme');
+            }
+        }
+    </script>
+</body>
+</html>
