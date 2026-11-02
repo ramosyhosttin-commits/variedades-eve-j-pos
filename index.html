@@ -584,6 +584,13 @@
     <div id="loginOverlay">
         <div class="login-box">
             <h2>🛍️ Variedades EVE J</h2>
+            
+            <label style="color: var(--text-muted); font-size: 0.8rem; display: block; margin-bottom: 4px; text-align: left;">Seleccionar Negocio:</label>
+            <select id="loginBusiness" style="margin-bottom: 12px;">
+                <option value="negocio1">Negocio 1 (Tienda Principal)</option>
+                <option value="negocio2">Negocio 2 (Tienda Secundaria)</option>
+            </select>
+
             <input type="text" id="loginUser" placeholder="Usuario" style="margin-bottom: 10px;">
             <input type="password" id="loginPass" placeholder="Contraseña" style="margin-bottom: 15px;">
             <button class="btn-action" onclick="verificarLogin()">Entrar al Sistema</button>
@@ -593,6 +600,7 @@
 
     <div class="sidebar" id="appSidebar">
         <h2>🛍️ Variedades EVE J</h2>
+        <p id="lblNegocioActivo" style="font-size: 0.78rem; color: var(--primary-purple); margin-top: -22px; margin-bottom: 22px; font-weight: 700; background: rgba(147,51,234,0.1); padding: 4px 8px; border-radius: 6px; text-align: center;"></p>
         <button class="menu-btn active" id="mPos" onclick="cambiarVista('pos')">Punto de Venta</button>
         <button class="menu-btn" id="mInv" onclick="cambiarVista('inventario')">Gestión de Inventario</button>
         <button class="menu-btn" id="mCaja" onclick="cambiarVista('caja')">Cierre de Caja (Turnos)</button>
@@ -910,51 +918,57 @@
     </div>
 
     <script>
-        let config = JSON.parse(localStorage.getItem('eve_config')) || {
-            name: "Variedades EVE J Sant Louis",
-            rif: "J-12345678-9",
-            address: "Barquisimeto, Lara",
-            tasa: 36.50,
-            theme: "dark"
-        };
+        let negocioActivo = "negocio1";
 
-        let productos = JSON.parse(localStorage.getItem('eve_productos')) || [
-            { code: "001", name: "Blusa Casual", price: 12.00, mayorPrice: 9.50, stock: 25, iva: 1 },
-            { code: "002", name: "Jeans Damas", price: 22.00, mayorPrice: 18.00, stock: 15, iva: 1 },
-            { code: "003", name: "Vestido Elegante", price: 30.00, mayorPrice: 25.00, stock: 10, iva: 1 },
-            { code: "004", name: "Cartera Ejecutiva", price: 18.00, mayorPrice: 14.00, stock: 8, iva: 1 }
-        ];
-
-        let ventasTurno = JSON.parse(localStorage.getItem('eve_ventasTurno')) || [];
-        let historialCierres = JSON.parse(localStorage.getItem('eve_historialCierres')) || [];
-        let libroVentas = JSON.parse(localStorage.getItem('eve_libroVentas')) || [];
-        let turnoActualNum = parseInt(localStorage.getItem('eve_turnoNum')) || 1;
-        let correlativoNota = parseInt(localStorage.getItem('eve_corrNota')) || 125;
-        let correlativoFactura = parseInt(localStorage.getItem('eve_corrFactura')) || 1;
+        let config = { name: "Variedades EVE J Sant Louis", rif: "J-12345678-9", address: "Barquisimeto, Lara", tasa: 36.50, theme: "dark" };
+        let productos = [];
+        let ventasTurno = [];
+        let historialCierres = [];
+        let libroVentas = [];
+        let turnoActualNum = 1;
+        let correlativoNota = 125;
+        let correlativoFactura = 1;
 
         let carrito = [];
         let modoPrecio = "detal";
 
-        function guardarDatos() {
-            localStorage.setItem('eve_config', JSON.stringify(config));
-            localStorage.setItem('eve_productos', JSON.stringify(productos));
-            localStorage.setItem('eve_ventasTurno', JSON.stringify(ventasTurno));
-            localStorage.setItem('eve_historialCierres', JSON.stringify(historialCierres));
-            localStorage.setItem('eve_libroVentas', JSON.stringify(libroVentas));
-            localStorage.setItem('eve_turnoNum', turnoActualNum);
-            localStorage.setItem('eve_corrNota', correlativoNota);
-            localStorage.setItem('eve_corrFactura', correlativoFactura);
+        function cargarDatosNegocio() {
+            config = JSON.parse(localStorage.getItem(`eve_${negocioActivo}_config`)) || {
+                name: negocioActivo === "negocio1" ? "Variedades EVE J - Negocio 1" : "Variedades EVE J - Negocio 2",
+                rif: "J-12345678-9",
+                address: "Barquisimeto, Lara",
+                tasa: 36.50,
+                theme: "dark"
+            };
+
+            productos = JSON.parse(localStorage.getItem(`eve_${negocioActivo}_productos`)) || [
+                { code: "001", name: "Blusa Casual", price: 12.00, mayorPrice: 9.50, stock: 25, iva: 1 },
+                { code: "002", name: "Jeans Damas", price: 22.00, mayorPrice: 18.00, stock: 15, iva: 1 }
+            ];
+
+            ventasTurno = JSON.parse(localStorage.getItem(`eve_${negocioActivo}_ventasTurno`)) || [];
+            historialCierres = JSON.parse(localStorage.getItem(`eve_${negocioActivo}_historialCierres`)) || [];
+            libroVentas = JSON.parse(localStorage.getItem(`eve_${negocioActivo}_libroVentas`)) || [];
+            turnoActualNum = parseInt(localStorage.getItem(`eve_${negocioActivo}_turnoNum`)) || 1;
+            correlativoNota = parseInt(localStorage.getItem(`eve_${negocioActivo}_corrNota`)) || 125;
+            correlativoFactura = parseInt(localStorage.getItem(`eve_${negocioActivo}_corrFactura`)) || 1;
         }
 
-        // Sincronización automática si se abre en varias pestañas o dispositivos sincronizados
+        function guardarDatos() {
+            localStorage.setItem(`eve_${negocioActivo}_config`, JSON.stringify(config));
+            localStorage.setItem(`eve_${negocioActivo}_productos`, JSON.stringify(productos));
+            localStorage.setItem(`eve_${negocioActivo}_ventasTurno`, JSON.stringify(ventasTurno));
+            localStorage.setItem(`eve_${negocioActivo}_historialCierres`, JSON.stringify(historialCierres));
+            localStorage.setItem(`eve_${negocioActivo}_libroVentas`, JSON.stringify(libroVentas));
+            localStorage.setItem(`eve_${negocioActivo}_turnoNum`, turnoActualNum);
+            localStorage.setItem(`eve_${negocioActivo}_corrNota`, correlativoNota);
+            localStorage.setItem(`eve_${negocioActivo}_corrFactura`, correlativoFactura);
+        }
+
+        // Sincronización entre pestañas/dispositivos para el mismo negocio
         window.addEventListener('storage', (e) => {
-            if(e.key && e.key.startsWith('eve_')) {
-                config = JSON.parse(localStorage.getItem('eve_config')) || config;
-                productos = JSON.parse(localStorage.getItem('eve_productos')) || productos;
-                ventasTurno = JSON.parse(localStorage.getItem('eve_ventasTurno')) || ventasTurno;
-                historialCierres = JSON.parse(localStorage.getItem('eve_historialCierres')) || historialCierres;
-                libroVentas = JSON.parse(localStorage.getItem('eve_libroVentas')) || libroVentas;
-                
+            if(e.key && e.key.startsWith(`eve_${negocioActivo}_`)) {
+                cargarDatosNegocio();
                 renderProductos();
                 renderInventario();
                 actualizarTotales();
@@ -1005,8 +1019,11 @@
         function verificarLogin() {
             const u = document.getElementById('loginUser').value;
             const p = document.getElementById('loginPass').value;
+            negocioActivo = document.getElementById('loginBusiness').value;
+
             if(u === "lapatrona" && p === "saint21") {
                 document.getElementById('loginOverlay').style.display = 'none';
+                document.getElementById('lblNegocioActivo').innerText = negocioActivo === "negocio1" ? "🏢 Negocio 1 Activo" : "🏬 Negocio 2 Activo";
                 initApp();
             } else {
                 document.getElementById('loginError').style.display = 'block';
@@ -1014,6 +1031,7 @@
         }
 
         function initApp() {
+            cargarDatosNegocio();
             obtenerTasaBCV();
             renderProductos();
             renderInventario();
@@ -1055,7 +1073,7 @@
             document.getElementById('lblModoCart').innerText = modoPrecio === 'detal' ? 'Detal' : 'Al Mayor';
             carrito.forEach(item => {
                 const prod = productos.find(p => p.code === item.code);
-                item.price = modoPrecio === 'detal' ? prod.price : prod.mayorPrice;
+                if(prod) item.price = modoPrecio === 'detal' ? prod.price : prod.mayorPrice;
             });
             renderCarrito();
             actualizarTotales();
@@ -1231,7 +1249,7 @@
                 let t = item.price * item.qty;
                 totalUSD += t;
                 const prod = productos.find(p => p.code === item.code);
-                prod.stock -= item.qty;
+                if(prod) prod.stock -= item.qty;
 
                 if(item.iva) {
                     let b = t / 1.16;
@@ -1395,14 +1413,14 @@
             ventasTurno = [];
             guardarDatos();
             renderCajaData();
-            alert("Turno cerrado exitosamente. Se ha iniciado un nuevo turno de caja.");
+            alert("Turno cerrado exitosamente.");
         }
 
         function descargarCierreImagen() {
             const box = document.getElementById('cajaReporteBox');
             html2canvas(box, { backgroundColor: '#1a1a1a' }).then(canvas => {
                 let link = document.createElement('a');
-                link.download = `Cierre_Turno_${turnoActualNum}.png`;
+                link.download = `Cierre_${negocioActivo}_Turno_${turnoActualNum}.png`;
                 link.href = canvas.toDataURL();
                 link.click();
             });
@@ -1461,7 +1479,7 @@
 
             renderInventario();
             renderProductos();
-            alert("Producto agregado y guardado con éxito.");
+            alert("Producto guardado con éxito.");
         }
 
         function renderInventario() {
@@ -1524,7 +1542,7 @@
             guardarDatos();
             aplicarConfigUI();
             actualizarTotales();
-            alert("Configuración guardada con éxito.");
+            alert("Configuración guardada.");
         }
 
         function aplicarConfigUI() {
