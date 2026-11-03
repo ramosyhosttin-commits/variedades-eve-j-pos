@@ -594,12 +594,12 @@
     </div>
 
     <div class="main-container">
-        <!-- BOTONES SUPERIORES ORDENADOS -->
+        <!-- BOTONES SUPERIORES CON AUTO-FETCH DE TASA -->
         <div style="position: absolute; top: 12px; right: 20px; z-index: 1100; display: flex; align-items: center; gap: 8px;">
             <div style="display: flex; align-items: center; background: var(--card-dark); border: 1px solid var(--primary-purple); padding: 4px 8px; border-radius: 8px;">
                 <span style="font-size: 0.75rem; color: var(--text-muted); margin-right: 4px;">Tasa:</span>
-                <input type="number" id="tasaFlotanteInput" step="0.01" value="36.50" style="width: 65px; margin-bottom: 0; padding: 2px; font-size: 0.85rem; text-align: center;">
-                <button onclick="aplicarTasaRapida()" style="background: var(--primary-purple); color: #fff; border: none; padding: 4px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 600; cursor: pointer; margin-left: 4px;">🔄</button>
+                <input type="number" id="tasaFlotanteInput" step="0.01" value="889.58" style="width: 75px; margin-bottom: 0; padding: 2px; font-size: 0.85rem; text-align: center;" onchange="tasaBCV=parseFloat(this.value)||889.58; actualizarTotales(); guardarDatosLocales();">
+                <button id="btnFetchTasa" onclick="obtenerTasaBCVEnVivo(true)" title="Obtener tasa del día por Internet" style="background: var(--primary-purple); color: #fff; border: none; padding: 4px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 600; cursor: pointer; margin-left: 4px;">🔄</button>
             </div>
             
             <button onclick="toggleModoCelular()" id="btnModoFlotante" style="background: var(--card-dark); border: 1px solid var(--primary-purple); color: var(--primary-purple); padding: 6px 10px; border-radius: 8px; font-size: 0.8rem; font-weight: 600; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.3);">📱 Cambiar a Modo Celular</button>
@@ -860,7 +860,7 @@
                 <input type="text" id="confRif" value="J-50384920-1">
 
                 <label style="color: var(--text-muted); font-size: 0.85rem; margin-top: 10px; display:block;">Tasa Oficial BCV (Bs por $):</label>
-                <input type="number" id="confTasa" step="0.01" value="36.50">
+                <input type="number" id="confTasa" step="0.01" value="889.58">
 
                 <label style="color: var(--text-muted); font-size: 0.85rem; margin-top: 10px; display:block;">Tema Visual:</label>
                 <select id="confTheme" onchange="cambiarTemaVisual()">
@@ -910,7 +910,7 @@
         let cart = [];
         let ventas = [];
         let cierres = [];
-        let tasaBCV = 36.50;
+        let tasaBCV = 889.58;
         let turnoActual = 1;
         let modoPrecio = 'detal';
         let modoMovilActivo = false;
@@ -942,6 +942,8 @@
                 tasaBCV = parseFloat(tasaGuardada);
                 document.getElementById('confTasa').value = tasaBCV;
                 document.getElementById('tasaFlotanteInput').value = tasaBCV;
+            } else {
+                obtenerTasaBCVEnVivo(false);
             }
 
             products = prodGuardados ? JSON.parse(prodGuardados) : [
@@ -960,6 +962,46 @@
             localStorage.setItem('pos_products_' + currentBusiness, JSON.stringify(products));
             localStorage.setItem('pos_ventas_' + currentBusiness, JSON.stringify(ventas));
             localStorage.setItem('pos_tasa_bcv', tasaBCV);
+        }
+
+        async function obtenerTasaBCVEnVivo(mostrarAlerta = true) {
+            const btn = document.getElementById('btnFetchTasa');
+            if (btn) btn.innerText = '⏳';
+
+            try {
+                const response = await fetch('https://rates.dolarvzla.com/bcv/current.json');
+                const data = await response.json();
+                
+                if (data && data.current && data.current.usd) {
+                    tasaBCV = parseFloat(data.current.usd);
+                    document.getElementById('tasaFlotanteInput').value = tasaBCV.toFixed(2);
+                    document.getElementById('confTasa').value = tasaBCV.toFixed(2);
+                    guardarDatosLocales();
+                    actualizarTotales();
+                    if (mostrarAlerta) alert('¡Tasa BCV del día obtenida con éxito: ' + tasaBCV.toFixed(2) + ' Bs/$!');
+                } else {
+                    throw new Error('Formato no válido');
+                }
+            } catch (err) {
+                try {
+                    const fallback = await fetch('https://datos.cromstudio.com.ve/dolar');
+                    const dataFb = await fallback.json();
+                    if (dataFb && dataFb.current && dataFb.current.usd) {
+                        tasaBCV = parseFloat(dataFb.current.usd);
+                        document.getElementById('tasaFlotanteInput').value = tasaBCV.toFixed(2);
+                        document.getElementById('confTasa').value = tasaBCV.toFixed(2);
+                        guardarDatosLocales();
+                        actualizarTotales();
+                        if (mostrarAlerta) alert('¡Tasa BCV del día actualizada: ' + tasaBCV.toFixed(2) + ' Bs/$!');
+                    } else {
+                        if (mostrarAlerta) alert('No se pudo obtener la tasa en automático. Puedes colocarla manualmente.');
+                    }
+                } catch(e) {
+                    if (mostrarAlerta) alert('Error al consultar servidor BCV. Verifica tu conexión a Internet.');
+                }
+            } finally {
+                if (btn) btn.innerText = '🔄';
+            }
         }
 
         function cambiarVista(vista) {
@@ -997,19 +1039,6 @@
             document.body.classList.toggle('mobile-mode', modoMovilActivo);
             document.getElementById('btnModoText').innerText = modoMovilActivo ? '📱 Modo Celular' : '🖥️ Modo PC';
             document.getElementById('btnModoFlotante').innerText = modoMovilActivo ? '🖥️ Cambiar a Modo PC' : '📱 Cambiar a Modo Celular';
-        }
-
-        function aplicarTasaRapida() {
-            const nuevaTasa = parseFloat(document.getElementById('tasaFlotanteInput').value);
-            if (!isNaN(nuevaTasa) && nuevaTasa > 0) {
-                tasaBCV = nuevaTasa;
-                document.getElementById('confTasa').value = tasaBCV;
-                guardarDatosLocales();
-                actualizarTotales();
-                alert('¡Tasa BCV actualizada a ' + tasaBCV + '!');
-            } else {
-                alert('Por favor introduce una tasa válida.');
-            }
         }
 
         function cambiarModoPrecio() {
@@ -1470,7 +1499,7 @@
         }
 
         function guardarConfiguracion() {
-            tasaBCV = parseFloat(document.getElementById('confTasa').value) || 36.50;
+            tasaBCV = parseFloat(document.getElementById('confTasa').value) || 889.58;
             document.getElementById('tasaFlotanteInput').value = tasaBCV;
             guardarDatosLocales();
             actualizarTotales();
