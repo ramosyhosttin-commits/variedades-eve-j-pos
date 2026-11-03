@@ -539,7 +539,7 @@
         }
         body.mobile-mode #viewPos.active-view {
             flex-direction: column !important;
-            padding-bottom: 80px; /* Espacio para que no tape el fondo */
+            padding-bottom: 80px;
         }
         body.mobile-mode .catalog-section {
             padding-right: 0 !important;
@@ -594,20 +594,21 @@
     </div>
 
     <div class="main-container">
-        <!-- BOTÓN FLOTANTE PARA CAMBIAR TASA BCV DESDE CUALQUIER PANTALLA -->
-        <div style="position: absolute; top: 12px; right: 180px; z-index: 1100; display: flex; align-items: center; background: var(--card-dark); border: 1px solid var(--primary-purple); padding: 4px 10px; border-radius: 8px;">
-            <span style="font-size: 0.75rem; color: var(--text-muted); margin-right: 6px;">Tasa BCV:</span>
-            <input type="number" id="tasaFlotanteInput" step="0.01" value="36.50" oninput="actualizarTasaRapida(this.value)" style="width: 70px; margin-bottom: 0; padding: 3px; font-size: 0.85rem; text-align: center;">
+        <!-- BOTONES SUPERIORES ORDENADOS -->
+        <div style="position: absolute; top: 12px; right: 20px; z-index: 1100; display: flex; align-items: center; gap: 8px;">
+            <div style="display: flex; align-items: center; background: var(--card-dark); border: 1px solid var(--primary-purple); padding: 4px 8px; border-radius: 8px;">
+                <span style="font-size: 0.75rem; color: var(--text-muted); margin-right: 4px;">Tasa:</span>
+                <input type="number" id="tasaFlotanteInput" step="0.01" value="36.50" style="width: 65px; margin-bottom: 0; padding: 2px; font-size: 0.85rem; text-align: center;">
+                <button onclick="aplicarTasaRapida()" style="background: var(--primary-purple); color: #fff; border: none; padding: 4px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 600; cursor: pointer; margin-left: 4px;">🔄</button>
+            </div>
+            
+            <button onclick="toggleModoCelular()" id="btnModoFlotante" style="background: var(--card-dark); border: 1px solid var(--primary-purple); color: var(--primary-purple); padding: 6px 10px; border-radius: 8px; font-size: 0.8rem; font-weight: 600; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.3);">📱 Cambiar a Modo Celular</button>
         </div>
 
         <div class="topbar-mobile">
             <button onclick="toggleMenuMobile()" style="background:none; border:none; color:var(--text-main); font-size:1.2rem; cursor:pointer;">☰ Menú</button>
             <span style="font-weight:700; color:var(--primary-purple); font-size:0.95rem;">Variedades EVE J</span>
             <button onclick="toggleModoCelular()" id="btnModoText" style="background:var(--primary-purple); color:#fff; border:none; padding:5px 10px; border-radius:6px; font-size:0.75rem; font-weight:600; cursor:pointer;">🖥️ Modo PC</button>
-        </div>
-
-        <div style="position: absolute; top: 12px; right: 20px; z-index: 1100;">
-            <button onclick="toggleModoCelular()" id="btnModoFlotante" style="background: var(--card-dark); border: 1px solid var(--primary-purple); color: var(--primary-purple); padding: 6px 12px; border-radius: 8px; font-size: 0.8rem; font-weight: 600; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.3);">📱 Cambiar a Modo Celular</button>
         </div>
 
         <!-- 1. VISTA POS -->
@@ -859,7 +860,7 @@
                 <input type="text" id="confRif" value="J-50384920-1">
 
                 <label style="color: var(--text-muted); font-size: 0.85rem; margin-top: 10px; display:block;">Tasa Oficial BCV (Bs por $):</label>
-                <input type="number" id="confTasa" step="0.01" value="36.50" oninput="actualizarTasaConfig()">
+                <input type="number" id="confTasa" step="0.01" value="36.50">
 
                 <label style="color: var(--text-muted); font-size: 0.85rem; margin-top: 10px; display:block;">Tema Visual:</label>
                 <select id="confTheme" onchange="cambiarTemaVisual()">
@@ -935,6 +936,13 @@
         function cargarDatosLocales() {
             const prodGuardados = localStorage.getItem('pos_products_' + currentBusiness);
             const ventasGuardadas = localStorage.getItem('pos_ventas_' + currentBusiness);
+            const tasaGuardada = localStorage.getItem('pos_tasa_bcv');
+
+            if (tasaGuardada) {
+                tasaBCV = parseFloat(tasaGuardada);
+                document.getElementById('confTasa').value = tasaBCV;
+                document.getElementById('tasaFlotanteInput').value = tasaBCV;
+            }
 
             products = prodGuardados ? JSON.parse(prodGuardados) : [
                 { id: '1', code: '001', name: 'Producto Ejemplo', price: 10.00, mayor_price: 8.00, stock: 50, iva: 1 }
@@ -945,11 +953,13 @@
             renderInventoryTable();
             renderCajaData();
             renderLibroVentas();
+            actualizarTotales();
         }
 
         function guardarDatosLocales() {
             localStorage.setItem('pos_products_' + currentBusiness, JSON.stringify(products));
             localStorage.setItem('pos_ventas_' + currentBusiness, JSON.stringify(ventas));
+            localStorage.setItem('pos_tasa_bcv', tasaBCV);
         }
 
         function cambiarVista(vista) {
@@ -989,11 +999,17 @@
             document.getElementById('btnModoFlotante').innerText = modoMovilActivo ? '🖥️ Cambiar a Modo PC' : '📱 Cambiar a Modo Celular';
         }
 
-        function actualizarTasaRapida(valor) {
-            tasaBCV = parseFloat(valor) || 36.50;
-            document.getElementById('confTasa').value = tasaBCV;
-            document.getElementById('tasaFlotanteInput').value = tasaBCV;
-            actualizarTotales();
+        function aplicarTasaRapida() {
+            const nuevaTasa = parseFloat(document.getElementById('tasaFlotanteInput').value);
+            if (!isNaN(nuevaTasa) && nuevaTasa > 0) {
+                tasaBCV = nuevaTasa;
+                document.getElementById('confTasa').value = tasaBCV;
+                guardarDatosLocales();
+                actualizarTotales();
+                alert('¡Tasa BCV actualizada a ' + tasaBCV + '!');
+            } else {
+                alert('Por favor introduce una tasa válida.');
+            }
         }
 
         function cambiarModoPrecio() {
@@ -1040,7 +1056,7 @@
             }
 
             const precioSeleccionado = modoPrecio === 'detal' ? prod.price : prod.mayor_price;
-            const itemExistente = cart.find(i => i.id === id && i.modo === modoPrecio);
+            const itemExistente = cart.find(i => i.id === id);
 
             if (itemExistente) {
                 if (itemExistente.qty < prod.stock) {
@@ -1444,12 +1460,6 @@
             if (v) mostrarFacturaModal(v);
         }
 
-        function actualizarTasaConfig() {
-            tasaBCV = parseFloat(document.getElementById('confTasa').value) || 36.50;
-            document.getElementById('tasaFlotanteInput').value = tasaBCV;
-            actualizarTotales();
-        }
-
         function cambiarTemaVisual() {
             const theme = document.getElementById('confTheme').value;
             if (theme === 'light') {
@@ -1460,6 +1470,10 @@
         }
 
         function guardarConfiguracion() {
+            tasaBCV = parseFloat(document.getElementById('confTasa').value) || 36.50;
+            document.getElementById('tasaFlotanteInput').value = tasaBCV;
+            guardarDatosLocales();
+            actualizarTotales();
             alert('Configuración guardada correctamente.');
         }
     </script>
