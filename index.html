@@ -220,7 +220,7 @@
 
         .product-card h4 {
             font-size: 0.95rem;
-            margin-bottom: 6px;
+            margin-bottom: 4px;
             color: var(--text-main);
         }
 
@@ -234,6 +234,17 @@
             font-size: 0.75rem;
             color: var(--text-muted);
             display: block;
+        }
+
+        .badge-dept {
+            font-size: 0.7rem !important;
+            color: var(--primary-purple) !important;
+            background: rgba(147,51,234,0.15);
+            padding: 2px 6px;
+            border-radius: 4px;
+            display: inline-block !important;
+            margin-bottom: 4px;
+            font-weight: 600;
         }
 
         .cart-items {
@@ -371,7 +382,7 @@
             border: 1px solid var(--border-dark);
             padding: 25px;
             border-radius: 12px;
-            max-width: 950px;
+            max-width: 980px;
             margin-bottom: 20px;
         }
 
@@ -411,11 +422,11 @@
             width: 100%;
             border-collapse: collapse;
             margin-top: 10px;
-            font-size: 0.9rem;
+            font-size: 0.88rem;
         }
 
         th, td {
-            padding: 10px;
+            padding: 8px;
             text-align: left;
             border-bottom: 1px solid var(--border-dark);
             color: var(--text-main);
@@ -423,18 +434,18 @@
 
         th {
             color: var(--text-muted);
-            font-size: 0.8rem;
+            font-size: 0.78rem;
         }
 
         .table-input {
             width: 100%;
-            padding: 6px 8px;
+            padding: 5px 6px;
             background-color: var(--bg-dark);
             border: 1px solid var(--border-dark);
             color: var(--text-main);
             border-radius: 6px;
             margin: 0;
-            font-size: 0.88rem;
+            font-size: 0.85rem;
         }
 
         .table-input:focus {
@@ -627,6 +638,19 @@
                 
                 <div class="search-container">
                     <input type="text" id="searchProduct" class="search-box" placeholder="🔍 Buscar por nombre o código..." oninput="filtrarProductos()">
+                    <select id="filterPosDept" onchange="filtrarProductos()" style="width: 180px; margin-bottom: 0; padding: 12px 10px;">
+                        <option value="TODOS">📦 Todos Dptos.</option>
+                        <option value="Dama">Dama</option>
+                        <option value="Caballero">Caballero</option>
+                        <option value="Infantil">Infantil</option>
+                        <option value="Escolar">Escolar</option>
+                        <option value="Carteras">Carteras</option>
+                        <option value="Hogar">Hogar</option>
+                        <option value="Bisutería">Bisutería</option>
+                        <option value="Ferretería">Ferretería</option>
+                        <option value="Cosméticos">Cosméticos</option>
+                        <option value="Fiestas">Fiestas</option>
+                    </select>
                 </div>
 
                 <div class="product-grid" id="productGrid"></div>
@@ -700,12 +724,24 @@
 
         <!-- 2. VISTA INVENTARIO -->
         <div class="section-view" id="viewInventario">
-            <div style="width: 100%; max-width: 950px;">
+            <div style="width: 100%; max-width: 980px;">
                 <div class="panel-box" style="max-width: 100%;">
                     <h3>➕ Agregar Nuevo Producto (Detal y Mayor)</h3>
-                    <div style="display: grid; grid-template-columns: 1.2fr 2fr 1fr 1fr 1fr 1fr; gap: 8px;">
+                    <div style="display: grid; grid-template-columns: 1fr 1.8fr 1.2fr 1fr 1fr 0.9fr 0.9fr; gap: 8px;">
                         <input type="text" id="newProdCode" placeholder="Código">
                         <input type="text" id="newProdName" placeholder="Nombre">
+                        <select id="newProdDept" style="margin-bottom:0;">
+                            <option value="Dama">Dama</option>
+                            <option value="Caballero">Caballero</option>
+                            <option value="Infantil">Infantil</option>
+                            <option value="Escolar">Escolar</option>
+                            <option value="Carteras">Carteras</option>
+                            <option value="Hogar">Hogar</option>
+                            <option value="Bisutería">Bisutería</option>
+                            <option value="Ferretería">Ferretería</option>
+                            <option value="Cosméticos">Cosméticos</option>
+                            <option value="Fiestas">Fiestas</option>
+                        </select>
                         <input type="number" id="newProdPrice" placeholder="Detal ($)" step="0.01">
                         <input type="number" id="newProdMayorPrice" placeholder="Mayor ($)" step="0.01">
                         <input type="number" id="newProdStock" placeholder="Stock">
@@ -718,17 +754,35 @@
                 </div>
 
                 <div class="panel-box" style="max-width: 100%;">
-                    <h3>📦 Stock y Precios Actuales</h3>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                        <h3>📦 Stock y Precios Actuales</h3>
+                        <div style="width: 220px;">
+                            <select id="filterInvDept" onchange="renderInventoryTable()" style="margin-bottom:0; padding:6px 10px; font-size:0.85rem;">
+                                <option value="TODOS">🔍 Todos los Dptos.</option>
+                                <option value="Dama">Dama</option>
+                                <option value="Caballero">Caballero</option>
+                                <option value="Infantil">Infantil</option>
+                                <option value="Escolar">Escolar</option>
+                                <option value="Carteras">Carteras</option>
+                                <option value="Hogar">Hogar</option>
+                                <option value="Bisutería">Bisutería</option>
+                                <option value="Ferretería">Ferretería</option>
+                                <option value="Cosméticos">Cosméticos</option>
+                                <option value="Fiestas">Fiestas</option>
+                            </select>
+                        </div>
+                    </div>
                     <table>
                         <thead>
                             <tr>
-                                <th style="width: 15%;">Código</th>
-                                <th style="width: 30%;">Nombre</th>
-                                <th style="width: 12%;">Detal ($)</th>
-                                <th style="width: 12%;">Mayor ($)</th>
-                                <th style="width: 10%;">Stock</th>
-                                <th style="width: 11%;">Impuesto</th>
-                                <th style="width: 10%;">Acción</th>
+                                <th style="width: 12%;">Código</th>
+                                <th style="width: 25%;">Nombre</th>
+                                <th style="width: 16%;">Departamento</th>
+                                <th style="width: 11%;">Detal ($)</th>
+                                <th style="width: 11%;">Mayor ($)</th>
+                                <th style="width: 9%;">Stock</th>
+                                <th style="width: 8%;">Impuesto</th>
+                                <th style="width: 8%;">Acción</th>
                             </tr>
                         </thead>
                         <tbody id="inventoryTableBody"></tbody>
@@ -915,6 +969,11 @@
         let modoPrecio = 'detal';
         let modoMovilActivo = false;
 
+        const departamentosDisponibles = [
+            "Dama", "Caballero", "Infantil", "Escolar", "Carteras", 
+            "Hogar", "Bisutería", "Ferretería", "Cosméticos", "Fiestas"
+        ];
+
         function verificarLogin() {
             const user = document.getElementById('loginUser').value.trim();
             const pass = document.getElementById('loginPass').value.trim();
@@ -947,8 +1006,12 @@
             }
 
             products = prodGuardados ? JSON.parse(prodGuardados) : [
-                { id: '1', code: '001', name: 'Producto Ejemplo', price: 10.00, mayor_price: 8.00, stock: 50, iva: 1 }
+                { id: '1', code: '001', name: 'Producto Ejemplo', dept: 'Dama', price: 10.00, mayor_price: 8.00, stock: 50, iva: 1 }
             ];
+
+            // Asegurar que productos antiguos tengan departamento asignado por defecto
+            products.forEach(p => { if (!p.dept) p.dept = 'Dama'; });
+
             ventas = ventasGuardadas ? JSON.parse(ventasGuardadas) : [];
 
             renderProducts();
@@ -1051,12 +1114,17 @@
         function renderProducts() {
             const grid = document.getElementById('productGrid');
             grid.innerHTML = '';
-            const filtro = document.getElementById('searchProduct').value.toLowerCase();
+            const filtroTexto = document.getElementById('searchProduct').value.toLowerCase();
+            const filtroDept = document.getElementById('filterPosDept').value;
 
-            const filtrados = products.filter(p => p.name.toLowerCase().includes(filtro) || p.code.toLowerCase().includes(filtro));
+            const filtrados = products.filter(p => {
+                const coincideTexto = p.name.toLowerCase().includes(filtroTexto) || p.code.toLowerCase().includes(filtroTexto);
+                const coincideDept = (filtroDept === 'TODOS' || p.dept === filtroDept);
+                return coincideTexto && coincideDept;
+            });
 
             if (filtrados.length === 0) {
-                grid.innerHTML = `<p style="color:var(--text-muted); font-size:0.85rem; grid-column:span 2;">No se encontraron productos.</p>`;
+                grid.innerHTML = `<p style="color:var(--text-muted); font-size:0.85rem; grid-column:span 2;">No se encontraron productos en este departamento.</p>`;
                 return;
             }
 
@@ -1064,6 +1132,7 @@
                 const precioMostrar = modoPrecio === 'detal' ? p.price : p.mayor_price;
                 grid.innerHTML += `
                     <div class="product-card" onclick="agregarAlCarrito('${p.id}')">
+                        <span class="badge-dept">${p.dept || 'General'}</span>
                         <span>${p.code}</span>
                         <h4>${p.name}</h4>
                         <p>$${precioMostrar.toFixed(2)}</p>
@@ -1098,6 +1167,7 @@
                     id: prod.id,
                     code: prod.code,
                     name: prod.name,
+                    dept: prod.dept || 'General',
                     price: precioSeleccionado,
                     qty: 1,
                     stock: prod.stock,
@@ -1122,7 +1192,7 @@
                     <div class="cart-item">
                         <div style="flex:1;">
                             <strong>${item.name}</strong>
-                            <div style="color:var(--primary-purple);">$${item.price.toFixed(2)} x ${item.qty}</div>
+                            <div style="color:var(--primary-purple); font-size:0.8rem;">$${item.price.toFixed(2)} x ${item.qty}</div>
                         </div>
                         <div class="cart-controls">
                             <button class="qty-btn" onclick="cambiarQty(${index}, -1)">-</button>
@@ -1293,6 +1363,7 @@
         function agregarProducto() {
             const code = document.getElementById('newProdCode').value.trim();
             const name = document.getElementById('newProdName').value.trim();
+            const dept = document.getElementById('newProdDept').value;
             const price = parseFloat(document.getElementById('newProdPrice').value);
             const mayor_price = parseFloat(document.getElementById('newProdMayorPrice').value);
             const stock = parseInt(document.getElementById('newProdStock').value);
@@ -1307,6 +1378,7 @@
                 id: Date.now().toString(),
                 code,
                 name,
+                dept,
                 price,
                 mayor_price,
                 stock,
@@ -1330,12 +1402,25 @@
         function renderInventoryTable() {
             const tbody = document.getElementById('inventoryTableBody');
             tbody.innerHTML = '';
+            const filtroDept = document.getElementById('filterInvDept').value;
 
-            products.forEach(p => {
+            const filtrados = products.filter(p => filtroDept === 'TODOS' || p.dept === filtroDept);
+
+            filtrados.forEach(p => {
+                let optionsDept = '';
+                departamentosDisponibles.forEach(d => {
+                    optionsDept += `<option value="${d}" ${p.dept === d ? 'selected' : ''}>${d}</option>`;
+                });
+
                 tbody.innerHTML += `
                     <tr>
                         <td>${p.code}</td>
                         <td>${p.name}</td>
+                        <td>
+                            <select class="table-input" onchange="actualizarCampoProd('${p.id}', 'dept', this.value)">
+                                ${optionsDept}
+                            </select>
+                        </td>
                         <td><input type="number" step="0.01" class="table-input" value="${p.price}" onchange="actualizarCampoProd('${p.id}', 'price', this.value)"></td>
                         <td><input type="number" step="0.01" class="table-input" value="${p.mayor_price}" onchange="actualizarCampoProd('${p.id}', 'mayor_price', this.value)"></td>
                         <td><input type="number" class="table-input" value="${p.stock}" onchange="actualizarCampoProd('${p.id}', 'stock', this.value)"></td>
@@ -1349,7 +1434,10 @@
         function actualizarCampoProd(id, campo, valor) {
             const p = products.find(x => x.id === id);
             if (p) {
-                p[campo] = campo === 'price' || campo === 'mayor_price' ? parseFloat(valor) : parseInt(valor);
+                if (campo === 'price' || campo === 'mayor_price') p[campo] = parseFloat(valor);
+                else if (campo === 'stock') p[campo] = parseInt(valor);
+                else p[campo] = valor;
+                
                 guardarDatosLocales();
                 renderProducts();
             }
