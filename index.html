@@ -239,17 +239,20 @@
         .cart-items {
             flex: 1;
             overflow-y: auto;
-            margin-bottom: 15px;
-            max-height: 200px;
+            margin-bottom: 10px;
+            max-height: 150px;
+            min-height: 80px;
+            border-bottom: 1px solid var(--border-dark);
+            padding-bottom: 5px;
         }
 
         .cart-item {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            padding: 8px 0;
+            padding: 6px 0;
             border-bottom: 1px solid var(--border-dark);
-            font-size: 0.88rem;
+            font-size: 0.85rem;
         }
 
         .cart-controls {
@@ -276,22 +279,22 @@
         }
 
         .qty-input {
-            width: 40px !important;
-            padding: 2px 4px !important;
+            width: 35px !important;
+            padding: 2px !important;
             text-align: center;
             margin: 0 !important;
-            font-size: 0.85rem !important;
+            font-size: 0.8rem !important;
         }
 
         .btn-remove-item {
             background: rgba(147, 51, 234, 0.2);
             color: #9333ea;
             border: none;
-            padding: 2px 7px;
+            padding: 2px 6px;
             border-radius: 4px;
             cursor: pointer;
             font-weight: bold;
-            margin-left: 6px;
+            margin-left: 4px;
             transition: 0.2s;
         }
 
@@ -301,25 +304,25 @@
         }
 
         .payment-methods {
-            margin-bottom: 10px;
+            margin-bottom: 8px;
         }
 
         .payment-methods label {
             display: block;
-            font-size: 0.85rem;
+            font-size: 0.8rem;
             color: var(--text-muted);
-            margin-bottom: 4px;
+            margin-bottom: 2px;
         }
 
         select, input {
             width: 100%;
-            padding: 9px;
+            padding: 8px;
             background-color: var(--bg-dark);
             border: 1px solid var(--border-dark);
             color: var(--text-main);
             border-radius: 8px;
-            margin-bottom: 8px;
-            font-size: 0.9rem;
+            margin-bottom: 6px;
+            font-size: 0.88rem;
             outline: none;
             transition: border-color 0.2s;
         }
@@ -330,19 +333,19 @@
 
         .totals {
             border-top: 1px solid var(--border-dark);
-            padding-top: 8px;
-            margin-bottom: 10px;
-            font-size: 0.85rem;
+            padding-top: 6px;
+            margin-bottom: 8px;
+            font-size: 0.82rem;
         }
 
         .total-row {
             display: flex;
             justify-content: space-between;
-            margin-bottom: 3px;
+            margin-bottom: 2px;
         }
 
         .total-row.final {
-            font-size: 1.05rem;
+            font-size: 1rem;
             font-weight: 700;
             color: var(--primary-purple);
         }
@@ -351,7 +354,7 @@
             background-color: var(--primary-purple);
             color: white;
             border: none;
-            padding: 11px;
+            padding: 10px;
             border-radius: 8px;
             font-weight: 600;
             cursor: pointer;
@@ -536,17 +539,19 @@
         }
         body.mobile-mode #viewPos.active-view {
             flex-direction: column !important;
+            padding-bottom: 80px; /* Espacio para que no tape el fondo */
         }
         body.mobile-mode .catalog-section {
             padding-right: 0 !important;
             border-right: none !important;
             border-bottom: 1px solid var(--border-dark);
-            padding-bottom: 15px;
-            margin-bottom: 15px;
-            max-height: 350px;
+            padding-bottom: 10px;
+            margin-bottom: 10px;
+            max-height: 250px;
         }
         body.mobile-mode .checkout-section {
             margin-left: 0 !important;
+            max-height: none !important;
         }
 
         @media print {
@@ -589,6 +594,12 @@
     </div>
 
     <div class="main-container">
+        <!-- BOTÓN FLOTANTE PARA CAMBIAR TASA BCV DESDE CUALQUIER PANTALLA -->
+        <div style="position: absolute; top: 12px; right: 180px; z-index: 1100; display: flex; align-items: center; background: var(--card-dark); border: 1px solid var(--primary-purple); padding: 4px 10px; border-radius: 8px;">
+            <span style="font-size: 0.75rem; color: var(--text-muted); margin-right: 6px;">Tasa BCV:</span>
+            <input type="number" id="tasaFlotanteInput" step="0.01" value="36.50" oninput="actualizarTasaRapida(this.value)" style="width: 70px; margin-bottom: 0; padding: 3px; font-size: 0.85rem; text-align: center;">
+        </div>
+
         <div class="topbar-mobile">
             <button onclick="toggleMenuMobile()" style="background:none; border:none; color:var(--text-main); font-size:1.2rem; cursor:pointer;">☰ Menú</button>
             <span style="font-weight:700; color:var(--primary-purple); font-size:0.95rem;">Variedades EVE J</span>
@@ -631,7 +642,7 @@
                 <div>
                     <div class="payment-methods">
                         <label>Tipo de Documento:</label>
-                        <select id="tipoDocumentoSelect" style="margin-bottom: 8px;">
+                        <select id="tipoDocumentoSelect" style="margin-bottom: 6px;">
                             <option value="NOTA_ENTREGA">Nota de Entrega (No Fiscal)</option>
                             <option value="FACTURA">Factura Fiscal (SENIAT)</option>
                         </select>
@@ -646,18 +657,18 @@
                             <option value="Cashea">Cashea (Financiamiento)</option>
                         </select>
 
-                        <div id="casheaContainer" style="display: none; background: rgba(147,51,234,0.05); padding: 10px; border-radius: 8px; border: 1px dashed var(--primary-purple); margin-top: 6px;">
+                        <div id="casheaContainer" style="display: none; background: rgba(147,51,234,0.05); padding: 8px; border-radius: 8px; border: 1px dashed var(--primary-purple); margin-top: 4px;">
                             <label style="color: var(--primary-purple); font-weight: 600;">Opciones de Cashea:</label>
-                            <label style="font-size: 0.8rem; margin-top: 4px; color: var(--text-muted);">Nivel Oficial:</label>
-                            <select id="casheaLevel" onchange="calcularInicialCashea()" style="margin-bottom: 6px; padding: 5px;">
+                            <label style="font-size: 0.75rem; margin-top: 2px; color: var(--text-muted);">Nivel Oficial:</label>
+                            <select id="casheaLevel" onchange="calcularInicialCashea()" style="margin-bottom: 4px; padding: 4px;">
                                 <option value="0.60">Nivel 1 (60% Inicial)</option>
                                 <option value="0.50">Nivel 2 (50% Inicial)</option>
                                 <option value="0.40" selected>Nivel 3 (40% Inicial)</option>
                             </select>
-                            <input type="text" id="casheaRef" placeholder="N° de Referencia / Cédula" style="margin-bottom: 6px;">
-                            <div style="background: var(--bg-dark); padding: 6px; border-radius: 6px; font-size: 0.8rem;">
+                            <input type="text" id="casheaRef" placeholder="N° de Referencia / Cédula" style="margin-bottom: 4px; padding: 6px;">
+                            <div style="background: var(--bg-dark); padding: 4px; border-radius: 6px; font-size: 0.78rem;">
                                 <p style="color: var(--text-muted);">Monto de Inicial a Cobrar:</p>
-                                <p style="color: var(--primary-purple); font-weight: 700; font-size: 0.9rem;" id="casheaInicialMonto">$0.00 (Bs 0.00)</p>
+                                <p style="color: var(--primary-purple); font-weight: 700;" id="casheaInicialMonto">$0.00 (Bs 0.00)</p>
                             </div>
                         </div>
                     </div>
@@ -976,6 +987,13 @@
             document.body.classList.toggle('mobile-mode', modoMovilActivo);
             document.getElementById('btnModoText').innerText = modoMovilActivo ? '📱 Modo Celular' : '🖥️ Modo PC';
             document.getElementById('btnModoFlotante').innerText = modoMovilActivo ? '🖥️ Cambiar a Modo PC' : '📱 Cambiar a Modo Celular';
+        }
+
+        function actualizarTasaRapida(valor) {
+            tasaBCV = parseFloat(valor) || 36.50;
+            document.getElementById('confTasa').value = tasaBCV;
+            document.getElementById('tasaFlotanteInput').value = tasaBCV;
+            actualizarTotales();
         }
 
         function cambiarModoPrecio() {
@@ -1428,6 +1446,7 @@
 
         function actualizarTasaConfig() {
             tasaBCV = parseFloat(document.getElementById('confTasa').value) || 36.50;
+            document.getElementById('tasaFlotanteInput').value = tasaBCV;
             actualizarTotales();
         }
 
