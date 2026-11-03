@@ -994,6 +994,9 @@
         }
 
         function cambiarVista(vista) {
+            // Ocultar menú en celular automáticamente al tocar una opción
+            document.getElementById('appSidebar').classList.remove('show-sidebar');
+
             document.querySelectorAll('.section-view').forEach(el => el.classList.remove('active-view'));
             document.querySelectorAll('.menu-btn').forEach(el => el.classList.remove('active'));
             
