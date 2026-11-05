@@ -392,6 +392,12 @@
             margin-bottom: 15px;
         }
 
+        .add-product-grid {
+            display: grid;
+            grid-template-columns: 1fr 1.8fr 1.2fr 1fr 1fr 0.9fr 0.9fr;
+            gap: 8px;
+        }
+
         .methods-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
@@ -565,6 +571,10 @@
             margin-left: 0 !important;
             max-height: none !important;
         }
+        body.mobile-mode .add-product-grid {
+            grid-template-columns: 1fr !important;
+            gap: 6px;
+        }
 
         @media print {
             body * { visibility: hidden; }
@@ -606,7 +616,7 @@
     </div>
 
     <div class="main-container">
-        <!-- BOTONES SUPERIORES CON AUTO-FETCH DE TASA -->
+        <!-- BOTONES SUPERIORES -->
         <div style="position: absolute; top: 12px; right: 20px; z-index: 1100; display: flex; align-items: center; gap: 8px;">
             <div style="display: flex; align-items: center; background: var(--card-dark); border: 1px solid var(--primary-purple); padding: 4px 8px; border-radius: 8px;">
                 <span style="font-size: 0.75rem; color: var(--text-muted); margin-right: 4px;">Tasa:</span>
@@ -614,6 +624,8 @@
                 <button id="btnFetchTasa" onclick="obtenerTasaBCVEnVivo(true)" title="Obtener tasa del día por Internet" style="background: var(--primary-purple); color: #fff; border: none; padding: 4px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 600; cursor: pointer; margin-left: 4px;">🔄</button>
             </div>
             
+            <button onclick="toggleTema()" id="btnTema" title="Cambiar Tema Claro/Oscuro" style="background: var(--card-dark); border: 1px solid var(--primary-purple); color: var(--primary-purple); padding: 6px 10px; border-radius: 8px; font-size: 0.8rem; font-weight: 600; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.3);">☀️ / 🌙</button>
+
             <button onclick="toggleModoCelular()" id="btnModoFlotante" style="background: var(--card-dark); border: 1px solid var(--primary-purple); color: var(--primary-purple); padding: 6px 10px; border-radius: 8px; font-size: 0.8rem; font-weight: 600; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.3);">📱 Cambiar a Modo Celular</button>
         </div>
 
@@ -638,7 +650,7 @@
                 </div>
                 
                 <div class="search-container">
-                    <input type="text" id="searchProduct" class="search-box" placeholder="🔍 Buscar por nombre o código..." oninput="filtrarProductos()">
+                    <input type="text" id="searchProduct" class="search-box" placeholder="🔍 Buscar por nombre o código (Presiona Enter para agregar)..." oninput="filtrarProductos()" onkeydown="manejarEnterLector(event)">
                     <select id="filterPosDept" onchange="filtrarProductos()" style="width: 180px; margin-bottom: 0; padding: 12px 10px;">
                         <option value="TODOS">📦 Todos Dptos.</option>
                         <option value="Dama">Dama</option>
@@ -651,6 +663,7 @@
                         <option value="Ferretería">Ferretería</option>
                         <option value="Cosméticos">Cosméticos</option>
                         <option value="Fiestas">Fiestas</option>
+                        <option value="Variedades">Variedades</option>
                     </select>
                 </div>
 
@@ -728,7 +741,7 @@
             <div style="width: 100%; max-width: 980px;">
                 <div class="panel-box" style="max-width: 100%;">
                     <h3>➕ Agregar Nuevo Producto (Detal y Mayor)</h3>
-                    <div style="display: grid; grid-template-columns: 1fr 1.8fr 1.2fr 1fr 1fr 0.9fr 0.9fr; gap: 8px;">
+                    <div class="add-product-grid">
                         <input type="text" id="newProdCode" placeholder="Código">
                         <input type="text" id="newProdName" placeholder="Nombre">
                         <select id="newProdDept" style="margin-bottom:0;">
@@ -742,6 +755,7 @@
                             <option value="Ferretería">Ferretería</option>
                             <option value="Cosméticos">Cosméticos</option>
                             <option value="Fiestas">Fiestas</option>
+                            <option value="Variedades">Variedades</option>
                         </select>
                         <input type="number" id="newProdPrice" placeholder="Detal ($)" step="0.01">
                         <input type="number" id="newProdMayorPrice" placeholder="Mayor ($)" step="0.01">
@@ -770,6 +784,7 @@
                                 <option value="Ferretería">Ferretería</option>
                                 <option value="Cosméticos">Cosméticos</option>
                                 <option value="Fiestas">Fiestas</option>
+                                <option value="Variedades">Variedades</option>
                             </select>
                         </div>
                     </div>
@@ -909,7 +924,6 @@
 
     <!-- SCRIPT DE LÓGICA Y SUPABASE -->
     <script>
-        // Credenciales de conexión a Supabase
         const SUPABASE_URL = 'https://fkosgodyvenapesyjjyt.supabase.co';
         const SUPABASE_ANON_KEY = 'sb_publishable_9o47e3QOlslUVlEQ2GZ_rA_wb2dJzS-';
         const client = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -922,10 +936,10 @@
         let cart = [];
         let ventas = [];
         let tasaBCV = 889.58;
+        let rifNegocio = 'J-50123456-0';
         let modoVenta = 'detal';
         let turnoActual = 1;
 
-        // Iniciar Sesión y Cargar Datos
         async function verificarLogin() {
             const u = document.getElementById('loginUser').value;
             const p = document.getElementById('loginPass').value;
@@ -940,19 +954,20 @@
             }
         }
 
-        // Cargar desde Supabase
         async function cargarDatosNube() {
             const { data, error } = await client.from('negocios_data').select('*').eq('business_id', currentBusiness).single();
             if (data) {
                 products = data.products || [];
                 ventas = data.ventas || [];
                 tasaBCV = data.tasa_bcv || 889.58;
+                rifNegocio = data.rif_negocio || 'J-50123456-0';
             } else {
                 await guardarDatosLocales();
             }
             document.getElementById('tasaFlotanteInput').value = tasaBCV;
             document.getElementById('lblTasa').innerText = tasaBCV;
             document.getElementById('confTasa').value = tasaBCV;
+            document.getElementById('confRif').value = rifNegocio;
             renderProducts();
             renderInventoryTable();
             renderCajaData();
@@ -960,7 +975,6 @@
             actualizarTotales();
         }
 
-        // Oyente en Tiempo Real entre Computadoras
         function escucharCambiosNube() {
             client.channel('public:negocios_data')
                 .on('postgres_changes', { event: '*', schema: 'public', table: 'negocios_data', filter: `business_id=eq.${currentBusiness}` }, payload => {
@@ -968,9 +982,11 @@
                         products = payload.new.products || [];
                         ventas = payload.new.ventas || [];
                         tasaBCV = payload.new.tasa_bcv || 889.58;
+                        rifNegocio = payload.new.rif_negocio || 'J-50123456-0';
                         document.getElementById('tasaFlotanteInput').value = tasaBCV;
                         document.getElementById('lblTasa').innerText = tasaBCV;
                         document.getElementById('confTasa').value = tasaBCV;
+                        document.getElementById('confRif').value = rifNegocio;
                         renderProducts();
                         renderInventoryTable();
                         renderCajaData();
@@ -981,7 +997,6 @@
                 .subscribe();
         }
 
-        // Guardar Cambios en Supabase
         async function guardarDatosLocales() {
             await client.from('negocios_data').upsert({
                 id: currentBusiness,
@@ -989,12 +1004,12 @@
                 products: products,
                 ventas: ventas,
                 tasa_bcv: tasaBCV,
+                rif_negocio: rifNegocio,
                 updated_at: new Date()
             });
         }
 
         function cambiarVista(vista) {
-            // Ocultar menú en celular automáticamente al tocar una opción
             document.getElementById('appSidebar').classList.remove('show-sidebar');
 
             document.querySelectorAll('.section-view').forEach(el => el.classList.remove('active-view'));
@@ -1009,7 +1024,7 @@
 
         function renderProducts() {
             const grid = document.getElementById('productGrid');
-            const search = document.getElementById('searchProduct').value.toLowerCase();
+            const search = document.getElementById('searchProduct').value.toLowerCase().trim();
             const dept = document.getElementById('filterPosDept').value;
             grid.innerHTML = '';
 
@@ -1035,6 +1050,35 @@
         }
 
         function filtrarProductos() { renderProducts(); }
+
+        // Agregar al carrito presionando ENTER con el lector físico
+        function manejarEnterLector(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                const search = document.getElementById('searchProduct').value.toLowerCase().trim();
+                if (!search) return;
+
+                let match = products.find(p => p.code.toLowerCase() === search);
+
+                if (!match) {
+                    const dept = document.getElementById('filterPosDept').value;
+                    const filtered = products.filter(p => {
+                        const matchSearch = p.name.toLowerCase().includes(search) || p.code.toLowerCase().includes(search);
+                        const matchDept = (dept === 'TODOS' || p.dept === dept);
+                        return matchSearch && matchDept;
+                    });
+                    if (filtered.length === 1) match = filtered[0];
+                }
+
+                if (match) {
+                    agregarAlCarrito(match.id);
+                    document.getElementById('searchProduct').value = '';
+                    renderProducts();
+                } else {
+                    alert('Producto no encontrado o existen varias coincidencias.');
+                }
+            }
+        }
 
         function cambiarModoPrecio() {
             modoVenta = document.getElementById('tipoVentaSelect').value;
@@ -1154,7 +1198,6 @@
             const totalUSD = parseFloat(document.getElementById('finalTotal').innerText.replace('$', ''));
             const totalBS = totalUSD * tasaBCV;
 
-            // Restar stock
             cart.forEach(c => {
                 const p = products.find(prod => prod.id === c.id);
                 if (p) p.stock -= c.qty;
@@ -1175,7 +1218,6 @@
             ventas.push(nuevaVenta);
             await guardarDatosLocales();
 
-            // Imprimir comprobante
             mostrarFactura(nuevaVenta);
 
             cart = [];
@@ -1184,6 +1226,7 @@
         }
 
         function mostrarFactura(v) {
+            document.getElementById('invRifDisplay').innerText = `RIF: ${rifNegocio}`;
             document.getElementById('invDocTypeDisplay').innerText = v.tipoDoc === 'FACTURA' ? 'FACTURA FISCAL' : 'NOTA DE ENTREGA';
             document.getElementById('invNumDisplay').innerText = `N°: ${v.numControl}`;
             document.getElementById('invFechaDisplay').innerText = `Fecha: ${v.fecha}`;
@@ -1206,7 +1249,6 @@
 
         function cerrarModal() { document.getElementById('invoiceModal').style.display = 'none'; }
 
-        // Gestión de Inventario
         async function agregarProducto() {
             const code = document.getElementById('newProdCode').value;
             const name = document.getElementById('newProdName').value;
@@ -1245,7 +1287,7 @@
                     <td><input class="table-input" value="${p.name}" onchange="actualizarProdField(${p.id}, 'name', this.value)"></td>
                     <td>
                         <select class="table-input" onchange="actualizarProdField(${p.id}, 'dept', this.value)">
-                            ${['Dama','Caballero','Infantil','Escolar','Carteras','Hogar','Bisutería','Ferretería','Cosméticos','Fiestas'].map(d => `<option value="${d}" ${p.dept===d?'selected':''}>${d}</option>`).join('')}
+                            ${['Dama','Caballero','Infantil','Escolar','Carteras','Hogar','Bisutería','Ferretería','Cosméticos','Fiestas','Variedades'].map(d => `<option value="${d}" ${p.dept===d?'selected':''}>${d}</option>`).join('')}
                         </select>
                     </td>
                     <td><input type="number" step="0.01" class="table-input" value="${p.price}" onchange="actualizarProdField(${p.id}, 'price', parseFloat(this.value))"></td>
@@ -1276,7 +1318,6 @@
             }
         }
 
-        // Cierre de Caja
         function renderCajaData() {
             const ventasTurno = ventas.filter(v => v.turno === turnoActual);
             let totals = { 'Efectivo USD': 0, 'Efectivo Bs': 0, 'Punto de Venta': 0, 'Pago Móvil': 0, 'Zelle': 0, 'Cashea': 0 };
@@ -1315,7 +1356,6 @@
             }
         }
 
-        // Libro de Ventas
         function renderLibroVentas() {
             const tbody = document.getElementById('libroVentasBody');
             tbody.innerHTML = '';
@@ -1333,7 +1373,6 @@
             });
         }
 
-        // Configuración y Tasa BCV
         async function actualizarTasaManual(val) {
             tasaBCV = parseFloat(val) || 889.58;
             document.getElementById('confTasa').value = tasaBCV;
@@ -1362,6 +1401,7 @@
 
         async function guardarConfiguracion() {
             tasaBCV = parseFloat(document.getElementById('confTasa').value) || 889.58;
+            rifNegocio = document.getElementById('confRif').value.trim() || 'J-50123456-0';
             document.getElementById('tasaFlotanteInput').value = tasaBCV;
             document.getElementById('lblTasa').innerText = tasaBCV;
             actualizarTotales();
@@ -1369,6 +1409,7 @@
             alert('Ajustes guardados con éxito');
         }
 
+        function toggleTema() { document.body.classList.toggle('light-theme'); }
         function toggleModoCelular() { document.body.classList.toggle('mobile-mode'); }
         function toggleMenuMobile() { document.getElementById('appSidebar').classList.toggle('show-sidebar'); }
         function cerrarSesion() { document.getElementById('loginOverlay').style.display = 'flex'; }
