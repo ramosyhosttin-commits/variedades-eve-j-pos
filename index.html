@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Variedades EVE J - POS e Inventario</title>
+    <title>Variedades EVE J - POS Multi-Negocio</title>
     <link rel="icon" type="image/png" href="logo.png">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <style>
@@ -63,7 +63,6 @@
             width: 350px;
             text-align: center;
             position: relative;
-            overflow: hidden;
         }
 
         .login-box h2 {
@@ -84,7 +83,7 @@
 
         .sidebar h2 {
             font-size: 1.1rem;
-            margin-bottom: 30px;
+            margin-bottom: 10px;
             color: var(--primary-purple);
         }
 
@@ -261,14 +260,6 @@
         .qty-btn:hover {
             border-color: var(--primary-purple);
             color: var(--primary-purple);
-        }
-
-        .qty-input {
-            width: 40px !important;
-            padding: 2px 4px !important;
-            text-align: center;
-            margin: 0 !important;
-            font-size: 0.85rem !important;
         }
 
         .btn-remove-item {
@@ -522,6 +513,11 @@
     <div id="loginOverlay">
         <div class="login-box">
             <h2>🛍️ Variedades EVE J</h2>
+            <label style="color: var(--text-muted); font-size: 0.85rem; display: block; margin-bottom: 4px; text-align: left;">Seleccionar Sucursal / Negocio:</label>
+            <select id="loginBusiness" style="margin-bottom: 12px;">
+                <option value="negocio1">Negocio 1</option>
+                <option value="negocio2">Negocio 2</option>
+            </select>
             <input type="text" id="loginUser" placeholder="Usuario" style="margin-bottom: 10px;" value="lapatrona">
             <input type="password" id="loginPass" placeholder="Contraseña" style="margin-bottom: 15px;" value="saint21">
             <button class="btn-action" onclick="verificarLogin()">Entrar al Sistema</button>
@@ -531,12 +527,13 @@
 
     <div class="sidebar">
         <h2>🛍️ Variedades EVE J</h2>
+        <p id="lblNegocioActivo" style="font-size: 0.78rem; color: var(--primary-purple); margin-bottom: 20px; font-weight: 700; background: rgba(147,51,234,0.1); padding: 4px 8px; border-radius: 6px; text-align: center;"></p>
         <button class="menu-btn active" id="mPos" onclick="cambiarVista('pos')">Punto de Venta</button>
         <button class="menu-btn" id="mInv" onclick="cambiarVista('inventario')">Gestión de Inventario</button>
         <button class="menu-btn" id="mCaja" onclick="cambiarVista('caja')">Cierre de Caja (Turnos)</button>
         <button class="menu-btn" id="mLibro" onclick="cambiarVista('libro')">Libro de Ventas</button>
         <button class="menu-btn" id="mConfig" onclick="cambiarVista('config')">Configuración RIF & Tasa</button>
-        <button class="menu-btn" onclick="cerrarSesion()" style="margin-top: auto; color: #ef4444;">🚪 Cerrar Sesión</button>
+        <button class="menu-btn" onclick="cerrarSesion()" style="margin-top: auto; color: #ef4444;">🚪 Cambiar Negocio / Salir</button>
     </div>
 
     <div class="main-container">
@@ -794,7 +791,7 @@
     </div>
 
     <script>
-        // Memoria 100% Local (Sin Supabase, cero datos falsos o arrastrados)
+        let currentBusiness = 'negocio1';
         let products = [];
         let cart = [];
         let ventas = [];
@@ -809,16 +806,15 @@
             theme: "dark"
         };
 
-        window.onload = function() {
-            cargarDatosLocales();
-            renderUI();
-        };
-
         function verificarLogin() {
             const u = document.getElementById('loginUser').value;
             const p = document.getElementById('loginPass').value;
             if (u === 'lapatrona' && p === 'saint21') {
+                currentBusiness = document.getElementById('loginBusiness').value;
+                document.getElementById('lblNegocioActivo').innerText = currentBusiness === 'negocio1' ? 'NEGOCIO 1' : 'NEGOCIO 2';
                 document.getElementById('loginOverlay').style.display = 'none';
+                cargarDatosLocales();
+                renderUI();
             } else {
                 document.getElementById('loginError').style.display = 'block';
             }
@@ -829,28 +825,35 @@
         }
 
         function cargarDatosLocales() {
-            const savedProducts = localStorage.getItem('eve_products');
-            const savedVentas = localStorage.getItem('eve_ventas');
-            const savedCierres = localStorage.getItem('eve_cierres');
-            const savedTasa = localStorage.getItem('eve_tasa');
-            const savedTurno = localStorage.getItem('eve_turno');
-            const savedConfig = localStorage.getItem('eve_config');
+            const suffix = `_${currentBusiness}`;
+            const savedProducts = localStorage.getItem(`eve_products${suffix}`);
+            const savedVentas = localStorage.getItem(`eve_ventas${suffix}`);
+            const savedCierres = localStorage.getItem(`eve_cierres${suffix}`);
+            const savedTasa = localStorage.getItem(`eve_tasa${suffix}`);
+            const savedTurno = localStorage.getItem(`eve_turno${suffix}`);
+            const savedConfig = localStorage.getItem(`eve_config${suffix}`);
 
-            if (savedProducts) products = JSON.parse(savedProducts);
-            if (savedVentas) ventas = JSON.parse(savedVentas);
-            if (savedCierres) historialCierres = JSON.parse(savedCierres);
-            if (savedTasa) tasaBCV = parseFloat(savedTasa);
-            if (savedTurno) turnoActual = parseInt(savedTurno);
-            if (savedConfig) configNegocio = JSON.parse(savedConfig);
+            products = savedProducts ? JSON.parse(savedProducts) : [];
+            ventas = savedVentas ? JSON.parse(savedVentas) : [];
+            historialCierres = savedCierres ? JSON.parse(savedCierres) : [];
+            tasaBCV = savedTasa ? parseFloat(savedTasa) : 889.58;
+            turnoActual = savedTurno ? parseInt(savedTurno) : 1;
+            configNegocio = savedConfig ? JSON.parse(savedConfig) : {
+                name: currentBusiness === 'negocio1' ? "Variedades EVE J - Negocio 1" : "Variedades EVE J - Negocio 2",
+                rif: "J-50123456-0",
+                address: "Barquisimeto, Lara",
+                theme: "dark"
+            };
         }
 
         function guardarDatosLocales() {
-            localStorage.setItem('eve_products', JSON.stringify(products));
-            localStorage.setItem('eve_ventas', JSON.stringify(ventas));
-            localStorage.setItem('eve_cierres', JSON.stringify(historialCierres));
-            localStorage.setItem('eve_tasa', tasaBCV);
-            localStorage.setItem('eve_turno', turnoActual);
-            localStorage.setItem('eve_config', JSON.stringify(configNegocio));
+            const suffix = `_${currentBusiness}`;
+            localStorage.setItem(`eve_products${suffix}`, JSON.stringify(products));
+            localStorage.setItem(`eve_ventas${suffix}`, JSON.stringify(ventas));
+            localStorage.setItem(`eve_cierres${suffix}`, JSON.stringify(historialCierres));
+            localStorage.setItem(`eve_tasa${suffix}`, tasaBCV);
+            localStorage.setItem(`eve_turno${suffix}`, turnoActual);
+            localStorage.setItem(`eve_config${suffix}`, JSON.stringify(configNegocio));
         }
 
         function renderUI() {
@@ -1190,7 +1193,7 @@
         function descargarCierreImagen() {
             html2canvas(document.getElementById('cajaReporteBox')).then(canvas => {
                 const link = document.createElement('a');
-                link.download = `cierre_turno_${turnoActual}.png`;
+                link.download = `cierre_${currentBusiness}_turno_${turnoActual}.png`;
                 link.href = canvas.toDataURL();
                 link.click();
             });
