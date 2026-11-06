@@ -922,7 +922,7 @@
         </div>
     </div>
 
-    <!-- SCRIPT DE LÓGICA Y SUPABASE -->
+    <!-- SCRIPT DE LÓGICA CON DUAL STORAGE (LOCALSTORAGE + SUPABASE) -->
     <script>
         const SUPABASE_URL = 'https://fkosgodyvenapesyjjyt.supabase.co';
         const SUPABASE_ANON_KEY = 'sb_publishable_9o47e3QOlslUVlEQ2GZ_rA_wb2dJzS-';
@@ -947,6 +947,12 @@
                 currentBusiness = document.getElementById('loginBusiness').value;
                 document.getElementById('lblNegocioActivo').innerText = currentBusiness === 'negocio1' ? 'NEGOCIO 1' : 'NEGOCIO 2';
                 document.getElementById('loginOverlay').style.display = 'none';
+                
+                // 1. Cargar primero de memoria local para no esperar
+                cargarDesdeLocalStorage();
+                renderUI();
+
+                // 2. Intentar actualizar desde la nube en segundo plano
                 await cargarDatosNube();
                 escucharCambiosNube();
             } else {
@@ -954,16 +960,97 @@
             }
         }
 
-        async function cargarDatosNube() {
-            const { data, error } = await client.from('negocios_data').select('*').eq('business_id', currentBusiness).single();
-            if (data && data.products) {
-                products = data.products;
-                ventas = data.ventas || [];
-                tasaBCV = data.tasa_bcv || 889.58;
-                rifNegocio = data.rif_negocio || 'J-50123456-0';
-            } else {
-                await guardarDatosLocales();
+        // Carga inmediata del navegador
+        function cargarDesdeLocalStorage() {
+            const localKey = `pos_data_${currentBusiness}`;
+            const localDataStr = localStorage.getItem(localKey);
+            if (localDataStr) {
+                try {
+                    const localData = JSON.parse(localDataStr);
+                    if (localData.products) products = localData.products;
+                    if (localData.ventas) ventas = localData.ventas;
+                    if (localData.tasa_bcv) tasaBCV = localData.tasa_bcv;
+                    if (localData.rif_negocio) rifNegocio = localData.rif_negocio;
+                    if (localData.turnoActual) turnoActual = localData.turnoActual;
+                } catch(e) {
+                    console.error("Error al leer de localStorage:", e);
+                }
             }
+        }
+
+        // Carga de Supabase con respaldo
+        async function cargarDatosNube() {
+            try {
+                const { data, error } = await client.from('negocios_data').select('*').eq('business_id', currentBusiness).single();
+                if (data && data.products && data.products.length > 0) {
+                    products = data.products;
+                    ventas = data.ventas || [];
+                    tasaBCV = data.tasa_bcv || 889.58;
+                    rifNegocio = data.rif_negocio || 'J-50123456-0';
+                    guardarEnLocalStorage(); // Actualizar memoria local con lo de la nube
+                    renderUI();
+                } else {
+                    // Si no hay datos en la nube, subimos los locales
+                    await guardarDatosLocales();
+                }
+            } catch (err) {
+                console.warn("No se pudo conectar a Supabase, trabajando 100% en local.", err);
+            }
+        }
+
+        function escucharCambiosNube() {
+            try {
+                client.channel('public:negocios_data')
+                    .on('postgres_changes', { event: '*', schema: 'public', table: 'negocios_data', filter: `business_id=eq.${currentBusiness}` }, payload => {
+                        if (payload.new && payload.new.products) {
+                            products = payload.new.products;
+                            ventas = payload.new.ventas || [];
+                            tasaBCV = payload.new.tasa_bcv || 889.58;
+                            rifNegocio = payload.new.rif_negocio || 'J-50123456-0';
+                            guardarEnLocalStorage();
+                            renderUI();
+                        }
+                    })
+                    .subscribe();
+            } catch(e) {
+                console.warn("Realtime no disponible");
+            }
+        }
+
+        // Guarda tanto localmente (infalible) como en Supabase (si hay conexión)
+        async function guardarDatosLocales() {
+            // 1. Guardado local inmediato
+            guardarEnLocalStorage();
+
+            // 2. Guardado en Supabase sin bloquear si falla
+            try {
+                await client.from('negocios_data').upsert({
+                    id: currentBusiness,
+                    business_id: currentBusiness,
+                    products: products,
+                    ventas: ventas,
+                    tasa_bcv: tasaBCV,
+                    rif_negocio: rifNegocio,
+                    updated_at: new Date()
+                });
+            } catch (err) {
+                console.warn("No se pudo guardar en Supabase. Los datos siguen a salvo en LocalStorage.", err);
+            }
+        }
+
+        function guardarEnLocalStorage() {
+            const localKey = `pos_data_${currentBusiness}`;
+            const dataToSave = {
+                products: products,
+                ventas: ventas,
+                tasa_bcv: tasaBCV,
+                rif_negocio: rifNegocio,
+                turnoActual: turnoActual
+            };
+            localStorage.setItem(localKey, JSON.stringify(dataToSave));
+        }
+
+        function renderUI() {
             document.getElementById('tasaFlotanteInput').value = tasaBCV;
             document.getElementById('lblTasa').innerText = tasaBCV;
             document.getElementById('confTasa').value = tasaBCV;
@@ -973,40 +1060,6 @@
             renderCajaData();
             renderLibroVentas();
             actualizarTotales();
-        }
-
-        function escucharCambiosNube() {
-            client.channel('public:negocios_data')
-                .on('postgres_changes', { event: '*', schema: 'public', table: 'negocios_data', filter: `business_id=eq.${currentBusiness}` }, payload => {
-                    if (payload.new && payload.new.products) {
-                        products = payload.new.products;
-                        ventas = payload.new.ventas || [];
-                        tasaBCV = payload.new.tasa_bcv || 889.58;
-                        rifNegocio = payload.new.rif_negocio || 'J-50123456-0';
-                        document.getElementById('tasaFlotanteInput').value = tasaBCV;
-                        document.getElementById('lblTasa').innerText = tasaBCV;
-                        document.getElementById('confTasa').value = tasaBCV;
-                        document.getElementById('confRif').value = rifNegocio;
-                        renderProducts();
-                        renderInventoryTable();
-                        renderCajaData();
-                        renderLibroVentas();
-                        actualizarTotales();
-                    }
-                })
-                .subscribe();
-        }
-
-        async function guardarDatosLocales() {
-            await client.from('negocios_data').upsert({
-                id: currentBusiness,
-                business_id: currentBusiness,
-                products: products,
-                ventas: ventas,
-                tasa_bcv: tasaBCV,
-                rif_negocio: rifNegocio,
-                updated_at: new Date()
-            });
         }
 
         function cambiarVista(vista) {
@@ -1051,7 +1104,6 @@
 
         function filtrarProductos() { renderProducts(); }
 
-        // Agregar al carrito presionando ENTER con el lector físico
         function manejarEnterLector(e) {
             if (e.key === 'Enter') {
                 e.preventDefault();
@@ -1250,8 +1302,8 @@
         function cerrarModal() { document.getElementById('invoiceModal').style.display = 'none'; }
 
         async function agregarProducto() {
-            const code = document.getElementById('newProdCode').value;
-            const name = document.getElementById('newProdName').value;
+            const code = document.getElementById('newProdCode').value.trim();
+            const name = document.getElementById('newProdName').value.trim();
             const dept = document.getElementById('newProdDept').value;
             const price = parseFloat(document.getElementById('newProdPrice').value);
             const mayorPrice = parseFloat(document.getElementById('newProdMayorPrice').value) || price;
@@ -1271,6 +1323,7 @@
 
             renderInventoryTable();
             renderProducts();
+            alert('Producto guardado con éxito.');
         }
 
         function renderInventoryTable() {
