@@ -956,8 +956,8 @@
 
         async function cargarDatosNube() {
             const { data, error } = await client.from('negocios_data').select('*').eq('business_id', currentBusiness).single();
-            if (data) {
-                products = data.products || [];
+            if (data && data.products) {
+                products = data.products;
                 ventas = data.ventas || [];
                 tasaBCV = data.tasa_bcv || 889.58;
                 rifNegocio = data.rif_negocio || 'J-50123456-0';
@@ -978,8 +978,8 @@
         function escucharCambiosNube() {
             client.channel('public:negocios_data')
                 .on('postgres_changes', { event: '*', schema: 'public', table: 'negocios_data', filter: `business_id=eq.${currentBusiness}` }, payload => {
-                    if (payload.new) {
-                        products = payload.new.products || [];
+                    if (payload.new && payload.new.products) {
+                        products = payload.new.products;
                         ventas = payload.new.ventas || [];
                         tasaBCV = payload.new.tasa_bcv || 889.58;
                         rifNegocio = payload.new.rif_negocio || 'J-50123456-0';
