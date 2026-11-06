@@ -922,17 +922,14 @@
         </div>
     </div>
 
-    <!-- SCRIPT DE LÓGICA CON DUAL STORAGE (LOCALSTORAGE + SUPABASE) -->
+    <!-- SCRIPT DE LÓGICA Y SUPABASE CORREGIDO (SIN EJEMPLOS FALTOS) -->
     <script>
         const SUPABASE_URL = 'https://fkosgodyvenapesyjjyt.supabase.co';
         const SUPABASE_ANON_KEY = 'sb_publishable_9o47e3QOlslUVlEQ2GZ_rA_wb2dJzS-';
         const client = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
         let currentBusiness = 'negocio1';
-        let products = [
-            { id: 1, code: '001', name: 'Franela Algodón Dama', dept: 'Dama', price: 10.00, mayorPrice: 8.00, stock: 15, iva: 1 },
-            { id: 2, code: '002', name: 'Pantalón Jeans Caballero', dept: 'Caballero', price: 25.00, mayorPrice: 20.00, stock: 10, iva: 1 }
-        ];
+        let products = []; // <--- LIMPIO DE PRODUCTOS DE EJEMPLO
         let cart = [];
         let ventas = [];
         let tasaBCV = 889.58;
@@ -948,11 +945,11 @@
                 document.getElementById('lblNegocioActivo').innerText = currentBusiness === 'negocio1' ? 'NEGOCIO 1' : 'NEGOCIO 2';
                 document.getElementById('loginOverlay').style.display = 'none';
                 
-                // 1. Cargar primero de memoria local para no esperar
+                // 1. Cargar memoria local primero
                 cargarDesdeLocalStorage();
                 renderUI();
 
-                // 2. Intentar actualizar desde la nube en segundo plano
+                // 2. Sincronizar con Supabase
                 await cargarDatosNube();
                 escucharCambiosNube();
             } else {
@@ -960,7 +957,6 @@
             }
         }
 
-        // Carga inmediata del navegador
         function cargarDesdeLocalStorage() {
             const localKey = `pos_data_${currentBusiness}`;
             const localDataStr = localStorage.getItem(localKey);
@@ -978,23 +974,19 @@
             }
         }
 
-        // Carga de Supabase con respaldo
         async function cargarDatosNube() {
             try {
                 const { data, error } = await client.from('negocios_data').select('*').eq('business_id', currentBusiness).single();
-                if (data && data.products && data.products.length > 0) {
+                if (data && data.products) {
                     products = data.products;
                     ventas = data.ventas || [];
                     tasaBCV = data.tasa_bcv || 889.58;
                     rifNegocio = data.rif_negocio || 'J-50123456-0';
-                    guardarEnLocalStorage(); // Actualizar memoria local con lo de la nube
+                    guardarEnLocalStorage();
                     renderUI();
-                } else {
-                    // Si no hay datos en la nube, subimos los locales
-                    await guardarDatosLocales();
                 }
             } catch (err) {
-                console.warn("No se pudo conectar a Supabase, trabajando 100% en local.", err);
+                console.warn("Trabajando con datos locales debido a conexión.", err);
             }
         }
 
@@ -1012,17 +1004,11 @@
                         }
                     })
                     .subscribe();
-            } catch(e) {
-                console.warn("Realtime no disponible");
-            }
+            } catch(e) {}
         }
 
-        // Guarda tanto localmente (infalible) como en Supabase (si hay conexión)
         async function guardarDatosLocales() {
-            // 1. Guardado local inmediato
             guardarEnLocalStorage();
-
-            // 2. Guardado en Supabase sin bloquear si falla
             try {
                 await client.from('negocios_data').upsert({
                     id: currentBusiness,
@@ -1034,7 +1020,7 @@
                     updated_at: new Date()
                 });
             } catch (err) {
-                console.warn("No se pudo guardar en Supabase. Los datos siguen a salvo en LocalStorage.", err);
+                console.warn("No se pudo subir a Supabase, pero se guardó en local.", err);
             }
         }
 
@@ -1064,7 +1050,6 @@
 
         function cambiarVista(vista) {
             document.getElementById('appSidebar').classList.remove('show-sidebar');
-
             document.querySelectorAll('.section-view').forEach(el => el.classList.remove('active-view'));
             document.querySelectorAll('.menu-btn').forEach(el => el.classList.remove('active'));
             
@@ -1111,7 +1096,6 @@
                 if (!search) return;
 
                 let match = products.find(p => p.code.toLowerCase() === search);
-
                 if (!match) {
                     const dept = document.getElementById('filterPosDept').value;
                     const filtered = products.filter(p => {
@@ -1127,7 +1111,7 @@
                     document.getElementById('searchProduct').value = '';
                     renderProducts();
                 } else {
-                    alert('Producto no encontrado o existen varias coincidencias.');
+                    alert('Producto no encontrado.');
                 }
             }
         }
@@ -1269,7 +1253,6 @@
 
             ventas.push(nuevaVenta);
             await guardarDatosLocales();
-
             mostrarFactura(nuevaVenta);
 
             cart = [];
@@ -1323,7 +1306,7 @@
 
             renderInventoryTable();
             renderProducts();
-            alert('Producto guardado con éxito.');
+            alert('¡Producto guardado exitosamente!');
         }
 
         function renderInventoryTable() {
@@ -1448,7 +1431,7 @@
                     if (notificar) alert(`Tasa BCV actualizada desde Internet: Bs ${tasaBCV}`);
                 }
             } catch (e) {
-                if (notificar) alert('No se pudo obtener la tasa automáticamente. Ingrésala manualmente.');
+                if (notificar) alert('No se pudo obtener la tasa automáticamente.');
             }
         }
 
