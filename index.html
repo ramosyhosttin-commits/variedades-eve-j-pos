@@ -342,6 +342,23 @@
             background-color: var(--primary-purple-hover);
         }
 
+        .btn-secondary-action {
+            background-color: #2563eb;
+            color: white;
+            border: none;
+            padding: 9px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+            margin-bottom: 12px;
+            transition: 0.2s;
+        }
+
+        .btn-secondary-action:hover {
+            background-color: #1d4ed8;
+        }
+
         .panel-box {
             background-color: var(--card-dark);
             border: 1px solid var(--border-dark);
@@ -626,7 +643,7 @@
                             <span id="montoIvaDisplay">$0.00</span>
                         </div>
                         <div class="total-row">
-                            <span>Total en Bs (Tasa: <span id="lblTasa">889.58</span>):</span>
+                            <span>Total en Bs (Tasa: <span id="lblTasa">901.62</span>):</span>
                             <span id="totalBs">Bs 0.00</span>
                         </div>
                         <div class="total-row final">
@@ -767,8 +784,10 @@
                 <input type="text" id="storeRif" placeholder="J-50123456-0">
                 <label style="color: var(--text-muted); font-size: 0.85rem;">Dirección Fiscal:</label>
                 <input type="text" id="storeAddress" placeholder="Barquisimeto, Lara">
+                
                 <label style="color: var(--text-muted); font-size: 0.85rem; margin-top: 10px; display: block;">Tasa BCV:</label>
-                <input type="number" id="storeTasa" placeholder="889.58" step="0.01">
+                <button class="btn-secondary-action" onclick="obtenerTasaBCVEnVivo()">🌐 Consultar Tasa Oficial BCV de hoy</button>
+                <input type="number" id="storeTasa" placeholder="901.62" step="0.01">
                 
                 <label style="color: var(--text-muted); font-size: 0.85rem; margin-top: 10px; display: block;">Modo de Apariencia (Tema):</label>
                 <select id="storeThemeSelect" style="margin-bottom: 15px;">
@@ -811,7 +830,7 @@
         let cart = [];
         let ventas = [];
         let historialCierres = [];
-        let tasaBCV = 889.58;
+        let tasaBCV = 901.62;
         let turnoActual = 1;
         let modoVenta = 'detal';
         let configNegocio = {
@@ -839,6 +858,24 @@
             document.getElementById('loginOverlay').style.display = 'flex';
         }
 
+        async function obtenerTasaBCVEnVivo() {
+            try {
+                const res = await fetch('https://ve.dolarapi.com/v1/dolares/oficial');
+                if (!res.ok) throw new Error('Error al conectar');
+                const data = await res.json();
+                if (data && data.promedio) {
+                    const nuevaTasa = parseFloat(data.promedio).toFixed(2);
+                    document.getElementById('storeTasa').value = nuevaTasa;
+                    tasaBCV = parseFloat(nuevaTasa);
+                    guardarDatosLocales();
+                    renderUI();
+                    alert(`¡Tasa BCV oficial obtenida en vivo exitosamente: Bs. ${nuevaTasa}!`);
+                }
+            } catch (err) {
+                alert('No se pudo obtener la tasa automáticamente en vivo. Por favor verifica tu conexión a internet o escríbela manualmente.');
+            }
+        }
+
         function cargarDatosLocales() {
             const suffix = `_${currentBusiness}`;
             const savedProducts = localStorage.getItem(`eve_products${suffix}`);
@@ -851,7 +888,7 @@
             products = savedProducts ? JSON.parse(savedProducts) : [];
             ventas = savedVentas ? JSON.parse(savedVentas) : [];
             historialCierres = savedCierres ? JSON.parse(savedCierres) : [];
-            tasaBCV = savedTasa ? parseFloat(savedTasa) : 889.58;
+            tasaBCV = savedTasa ? parseFloat(savedTasa) : 901.62;
             turnoActual = savedTurno ? parseInt(savedTurno) : 1;
             configNegocio = savedConfig ? JSON.parse(savedConfig) : {
                 name: currentBusiness === 'negocio1' ? "Variedades EVE J - Negocio 1" : "Variedades EVE J - Negocio 2",
@@ -1265,7 +1302,7 @@
             configNegocio.rif = document.getElementById('storeRif').value.trim() || "J-50123456-0";
             configNegocio.address = document.getElementById('storeAddress').value.trim() || "Barquisimeto, Lara";
             configNegocio.theme = document.getElementById('storeThemeSelect').value;
-            tasaBCV = parseFloat(document.getElementById('storeTasa').value) || 889.58;
+            tasaBCV = parseFloat(document.getElementById('storeTasa').value) || 901.62;
 
             guardarDatosLocales();
             renderUI();
