@@ -585,7 +585,7 @@
                 </div>
                 
                 <div class="search-container">
-                    <input type="text" id="searchProduct" class="search-box" placeholder="🔍 Buscar por nombre o código..." oninput="filtrarProductos()">
+                    <input type="text" id="searchProduct" class="search-box" placeholder="🔍 Buscar o escanear código de barras..." oninput="filtrarProductos()" onkeydown="manejarEscanner(event)">
                 </div>
 
                 <div class="product-grid" id="productGrid"></div>
@@ -624,6 +624,9 @@
                                 <option value="0.60">Nivel 1 (60% Inicial)</option>
                                 <option value="0.50">Nivel 2 (50% Inicial)</option>
                                 <option value="0.40" selected>Nivel 3 (40% Inicial)</option>
+                                <option value="0.40">Nivel 4 (40% Inicial)</option>
+                                <option value="0.40">Nivel 5 (40% Inicial)</option>
+                                <option value="0.00">Nivel 6 (0% Inicial / Sin Inicial)</option>
                             </select>
                             <input type="text" id="casheaRef" placeholder="N° de Referencia / Cédula" style="margin-bottom: 6px;">
                             <div style="background: var(--bg-dark); padding: 6px; border-radius: 6px; font-size: 0.8rem;">
@@ -849,6 +852,7 @@
                 document.getElementById('loginOverlay').style.display = 'none';
                 cargarDatosLocales();
                 renderUI();
+                document.getElementById('searchProduct').focus();
             } else {
                 document.getElementById('loginError').style.display = 'block';
             }
@@ -933,7 +937,11 @@
             document.querySelectorAll('.section-view').forEach(el => el.classList.remove('active-view'));
             document.querySelectorAll('.menu-btn').forEach(el => el.classList.remove('active'));
 
-            if(vista === 'pos') { document.getElementById('viewPos').classList.add('active-view'); document.getElementById('mPos').classList.add('active'); }
+            if(vista === 'pos') { 
+                document.getElementById('viewPos').classList.add('active-view'); 
+                document.getElementById('mPos').classList.add('active'); 
+                setTimeout(() => document.getElementById('searchProduct').focus(), 100);
+            }
             if(vista === 'inventario') { document.getElementById('viewInventario').classList.add('active-view'); document.getElementById('mInv').classList.add('active'); renderInventoryTable(); }
             if(vista === 'caja') { document.getElementById('viewCaja').classList.add('active-view'); document.getElementById('mCaja').classList.add('active'); renderCajaData(); }
             if(vista === 'libro') { document.getElementById('viewLibro').classList.add('active-view'); document.getElementById('mLibro').classList.add('active'); renderLibroVentas(); }
@@ -967,6 +975,30 @@
         }
 
         function filtrarProductos() { renderProducts(); }
+
+        function manejarEscanner(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                const codigoInput = document.getElementById('searchProduct').value.trim().toLowerCase();
+                if (!codigoInput) return;
+
+                const productoEncontrado = products.find(p => p.code.toLowerCase() === codigoInput);
+
+                if (productoEncontrado) {
+                    agregarAlCarrito(productoEncontrado.id);
+                    document.getElementById('searchProduct').value = '';
+                    renderProducts();
+                } else {
+                    const search = document.getElementById('searchProduct').value.toLowerCase().trim();
+                    const filtered = products.filter(p => p.name.toLowerCase().includes(search) || p.code.toLowerCase().includes(search));
+                    if (filtered.length === 1) {
+                        agregarAlCarrito(filtered[0].id);
+                        document.getElementById('searchProduct').value = '';
+                        renderProducts();
+                    }
+                }
+            }
+        }
 
         function cambiarModoPrecio() {
             modoVenta = document.getElementById('tipoVentaSelect').value;
@@ -1071,7 +1103,7 @@
         function calcularInicialCashea() {
             const finalUSDText = document.getElementById('finalTotal').innerText.replace('$', '');
             const totalUSD = parseFloat(finalUSDText) || 0;
-            const pct = parseFloat(document.getElementById('casheaLevel').value) || 0.40;
+            const pct = parseFloat(document.getElementById('casheaLevel').value);
             const inicialUSD = totalUSD * pct;
             const inicialBS = inicialUSD * tasaBCV;
             document.getElementById('casheaInicialMonto').innerText = `$${inicialUSD.toFixed(2)} (Bs ${inicialBS.toLocaleString('es-VE', {minimumFractionDigits:2})})`;
@@ -1111,6 +1143,7 @@
             renderProducts();
             renderCajaData();
             renderLibroVentas();
+            document.getElementById('searchProduct').focus();
         }
 
         function mostrarFactura(v) {
@@ -1135,7 +1168,10 @@
             document.getElementById('invoiceModal').style.display = 'flex';
         }
 
-        function cerrarModal() { document.getElementById('invoiceModal').style.display = 'none'; }
+        function cerrarModal() { 
+            document.getElementById('invoiceModal').style.display = 'none';
+            document.getElementById('searchProduct').focus();
+        }
 
         function agregarProducto() {
             const code = document.getElementById('newProdCode').value.trim();
