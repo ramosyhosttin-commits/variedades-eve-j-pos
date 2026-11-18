@@ -904,6 +904,10 @@
 
         function guardarDatosLocales() {
             const suffix = `_${currentBusiness}`;
+            // Eliminamos duplicados por ID antes de guardar para blindar la base de datos local
+            const productosUnicos = Array.from(new Map(products.map(p => [p.id, p])).values());
+            products = productosUnicos;
+
             localStorage.setItem(`eve_products${suffix}`, JSON.stringify(products));
             localStorage.setItem(`eve_ventas${suffix}`, JSON.stringify(ventas));
             localStorage.setItem(`eve_cierres${suffix}`, JSON.stringify(historialCierres));
@@ -1183,7 +1187,15 @@
 
             if (!code || !name || isNaN(price) || isNaN(stock)) return alert('Por favor completa todos los campos del producto');
 
-            products.push({ id: Date.now(), code, name, price, mayorPrice, stock, iva });
+            // Evitar duplicados por código en el inventario
+            const existeIndex = products.findIndex(p => p.code.toLowerCase() === code.toLowerCase());
+            if (existeIndex >= 0) {
+                if(!confirm(`Ya existe un producto con el código "${code}". ¿Deseas actualizarlo con los nuevos datos?`)) return;
+                products[existeIndex] = { ...products[existeIndex], name, price, mayorPrice, stock, iva };
+            } else {
+                products.push({ id: Date.now() + Math.random(), code, name, price, mayorPrice, stock, iva });
+            }
+
             guardarDatosLocales();
 
             document.getElementById('newProdCode').value = '';
@@ -1314,7 +1326,7 @@
             const tbody = document.getElementById('libroVentasBody');
             tbody.innerHTML = '';
             if (ventas.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:var(--text-muted);">No hay ventas registradas.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:var(--text-muted);">No hay ventas registrada.</td></tr>';
                 return;
             }
 
